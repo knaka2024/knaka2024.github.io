@@ -31,8 +31,8 @@
         source_code:"print('hello')",//ソースコード
         language:"python3",//言語指定、http://api.paiza.io/docs/swagger/#!/runners　を参考に
         input:"",
-        longpoll:"",
-        longpoll_timeout:"",
+        longpoll:true,
+        longpoll_timeout:10.0,
         api_key:"guest"};
     request.onload = function () {
       var data = this.response;
@@ -42,7 +42,7 @@
 </script>
 <script>
     $(function () {
-      var object = {name: "apple", color:"red", type: "fruit", when: "tomorrow"};
+      var object = {name: "apple", color:"red", type: "fruit", when: "tomorrow2"};
       console.log(object);
     });
 </script>        <!-- JavaScript: Above <body>  -->
