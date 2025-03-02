@@ -16,33 +16,40 @@
     <body>
       <h1>This is title</h1>
       <div class="text-center mb-4">
-          <h2>これは日本語のサブタイトルです (3/2 -06) </h2>
+          <h2>これは日本語のサブタイトルです (3/2 -07) </h2>
       </div>
 <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
 
 <script>
+async function postData(url = "", data = {}) {
+  const response = await fetch(url, {
+    method: "POST",
+    mode: "cors",
+    cache: "no-cache",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    redirect: "follow",
+    referrerPolicy: "no-referrer",
+    body: JSON.stringify(data),
+  });
+  return response.json();
+}
     $(function () {
-    var strid  = "";
-    var request = new XMLHttpRequest();
-    var url = 'http://api.paiza.io/runners/create'
-    request.open('POST',url, true);
-    request.responseType = 'json';
-    var params = {
-        source_code:"print('hello')",//ソースコード
-        language:"python3",//言語指定、http://api.paiza.io/docs/swagger/#!/runners　を参考に
-        input:"",
-        longpoll:true,
-        longpoll_timeout:10.0,
-        api_key:"guest"};
-    request.onload = function () {
-      var data = this.response;
-      console.log(data);
-    };
+          const url = "http://api.paiza.io:80/runners/create";
+  const data = {
+    source_code: "print(input())",
+    language: "python3",
+    input: "hellow world",
+    api_key: "guest",
+  };
+  const res = await postData(url, data);
 });
 </script>
 <script>
     $(function () {
-      var object = {name: "apple", color:"red", type: "fruit", when: "tomorrow2"};
+      var object = {name: "apple", color:"red", type: "fruit", when: "tomorrow3"};
       console.log(object);
     });
 </script>        <!-- JavaScript: Above <body>  -->
