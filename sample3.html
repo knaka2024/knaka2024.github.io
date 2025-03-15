@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>File Input Test</title>
+    <style>
+      table.msboard {
+        position: absolute;
+        // top: 10%;
+        left: 30%;
+        // margin-top: -10px;
+        // margin-left: -30px;
+      }
+      td.init {
+        width: 4vw;
+        height: 4vw;
+        text-align: center;
+        font-size: 2vw;
+        cursor: pointer;
+        background-color: #ddd;
+      }
+      td.touch {
+        background-color: #f0f0f0;
+        color: #f00;
+      }
+      table.msboard td:hover {
+        background-color: #eee;
+      }
+      .box {
+        font-size: 2vw;
+        position: absolute;
+        top: 8%;
+      }
+      .scrollbox {
+        width: 20vw;
+        height: 40vw;
+        border: 1px solid #000;
+        overflow-y: scroll;
+      }
+    </style>
+    <script src="./msselect.js"></script>
+    <script>
+      // global
+      let SIZE_Y = 0;
+      let SIZE_X = 0;
+      let IDX_MAX = 0;
+      function fileChanged(input) {
+        console.log(input);
+        for (let i = 0; i < input.files.length; i++) {
+          console.log(input.files[i]);
+          reader.readAsText(input.files[i]); // 読み込み開始
+        }
+      }
+      const reader = new FileReader(); // FileReader オブジェクト
+      reader.onload = function()　{ // 読みんこんだ後のコールバック
+        const board = document.getElementById('myboard');
+        const inputBox = document.getElementById('myinput');
+        const outputBox = document.getElementById('myoutput');
+        outputBox.value = `reading ${inputBox.files[0].name}\n`
+        //pre.innerHTML = reader.result;
+        const lines = reader.result.split(/\r\n|\n/);
+        let count_x = 0;
+        let count_y = 0;
+        console.log(lines);
+        for (let line = 0; line < lines.length; line++) {
+          console.log(line + ' --> ' + lines[line]);
+          let tline = document.createElement('tr');
+          //tline.innerHTML = lines[line];
+          const chars = lines[line].split('');
+          if (chars.length == 0) {
+            // skip empty line
+            continue;
+          } else {
+            count_y++;
+          }
+          count_x=0;
+          for (let char = 0; char < chars.length; char++) {
+            console.log('(' + char + ')' + ' --> ' + chars[char]);
+            if (!/[0-9]/.test(chars[char])) {
+              // skip non number
+              continue;
+            } else {
+              count_x++;
+            }
+            let tchar = document.createElement('td');
+            tchar.innerHTML = chars[char];
+            tchar.className = 'init';
+            tline.appendChild(tchar);
+          }
+          // 末尾に追加
+          board.appendChild(tline);
+          if (SIZE_X == 0) {
+            // horizontal
+            SIZE_X = count_x;
+          }
+        }
+        SIZE_Y = count_y;
+        IDX_MAX = SIZE_X * SIZE_Y -1;
+        msstep();
+      }
+
+      
+    </script>
+  </head>
+  <body>
+    <P>
+      <label>ボードを選んでください：</label>
+      <input type="file" id="myinput" onchange="fileChanged(this)"/><BR>
+      <textarea id="myoutput" class="box scrollbox" placeholder="log printed here"/></textarea>
+      <table id="myboard" class="msboard"></table>
+    </P>
+  </body>
+</html>
