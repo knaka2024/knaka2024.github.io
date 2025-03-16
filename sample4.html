@@ -62,13 +62,16 @@
         const inputBox = document.getElementById('myinput');
         const consoleBox = document.getElementById('myconsole');
         // output to console
-        consoleBox.value = `read ${inputBox.files[0].name}\n`
+        const msg = `read ${inputBox.files[0].name}\n`;
+        //scroll before print
+        consoleBox.scrollTop = consoleBox.scrollHeight;
+        consoleBox.value += msg;
         //pre.innerHTML = reader.result;
         const lines = this.result.split(/\r\n|\n/);
         createBoard(lines);
         addCellEventListener();
         addResetEventListener();
-      }, {once: true});
+      });
     </script>
   </head>
   <body>

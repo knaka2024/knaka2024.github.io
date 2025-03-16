@@ -21,6 +21,7 @@ function cellElem(index, elemList) {
   this.list = elemList;
   this.index = index;
   this.node = this.list[this.index];
+  this.value = this.node.innerHTML;
   this.touch = function() {
     let node = this.node;
     node.classList.add('touch');
@@ -28,6 +29,15 @@ function cellElem(index, elemList) {
   this.untouch = function() {
     let node = this.node;
     node.classList.remove('touch');
+  }
+  this.isTouch = function() {
+    return this.node.classList.contains('touch');
+  }
+  this.isEmpty = function() {
+    return (this.value == 0) ? 1 : 0;
+  }
+  this.isBomb = function() {
+    return (this.value >= 9) ? 1 : 0;
   }
   this.access = function() {
     accessCell(this.index, this.list, this);
@@ -45,21 +55,22 @@ function untouchCell(index, cellElemArray){
 */
 // access given index (board location) 
 function accessCell(index, cellElemArray, cell) {
-  const tableLoc = new boardLoc(index);
+  //const tableLoc = new boardLoc(index);
+  const tableLoc = new boardLoc(cell.index);
   // if (!checkIndexRange(index)){
   if (!tableLoc.checkRange()) {
     // out of range
     console.log('#ER index out of range', index);
     return 0;
   }
-  //cellElemLists[index].innerHTML = othelloColor;
   //let node = cellElemLists[index];
   //let node = cellElemArray[index];
-  let node = cell.node;
-  if (node.classList.contains('touch')) {
+  //let node = cell.node;
+  //if (node.classList.contains('touch')) {
+  if (cell.isTouch()) {
     console.log('skip', index);
   } else {
-    let val = node.innerHTML;
+    //let val = node.innerHTML;
     //node.innerHTML = '(' + val + ')';
     //node.style.backgroundColor = '#f0f0f0';
     //node.style.color = '#0f0';
@@ -67,16 +78,25 @@ function accessCell(index, cellElemArray, cell) {
     //touchCell(index, cellElemArray);
     cell.touch();
     console.log('touch', index);
-    if (val == 0) {
+    //if (cell.value == 0) {
+    if (cell.isEmpty()) {
       console.log('empty', index);
       pivotCell(index, cellElemArray, cell);
+    } else if (cell.isBomb()) {
+      const consoleBox = document.getElementById('myconsole');
+      const tableLoc = new boardLoc(cell.index);
+      const msg = `bomb !! (${tableLoc.x},${tableLoc.y})\n`;
+      //scroll before print
+      consoleBox.scrollTop = consoleBox.scrollHeight;
+      consoleBox.value += msg;
     }
   }
   return 1;
 }
 // pivot around given index (board location)
 function pivotCell(index, cellElemArray, cell) {
-  const tableLoc = new boardLoc(index);
+  //const tableLoc = new boardLoc(index);
+  const tableLoc = new boardLoc(cell.index);
   let pivot = [];
   
   const x_idx = new pibotAdjacent(tableLoc.x, 0, SIZE_X-1);
@@ -116,7 +136,16 @@ function addResetEventListener(){
 function addCellEventListener(){
   const board = document.getElementById('myboard');
   const cellElemLists = board.getElementsByTagName('td');
+  //const consoleBox = document.getElementById('myconsole');
   const outputBox = document.getElementById('myoutput');
+  //consoleBox.scrollTop = consoleBox.scrollHeight;
+  //outputBox.scrollTop = outputBox.scrollHeight;
+  //remove previous event on resetting from addResetEventListener()
+  for (let i=0; i < cellElemLists.length; i++) {
+    // to remove event, clone previous node and replace with it
+    const clonedCell = cellElemLists[i].cloneNode(true);
+    cellElemLists[i].replaceWith(clonedCell);
+  }
   // cellElemLists is NodeList, not Array
   // convert NodeList to Array to use indexOf which supports only an Array
   const cellElemArray = [...cellElemLists];
@@ -134,11 +163,15 @@ function addCellEventListener(){
       const tableIndex = cellElemArray.indexOf(this);
       const cell = new cellElem(tableIndex, cellElemArray);
       //console.log(cellElemArray);
-      const tableLoc = new boardLoc(tableIndex);
+      //const tableLoc = new boardLoc(tableIndex);
+      const tableLoc = new boardLoc(cell.index);
       console.log('click', tableIndex, '('+tableLoc.x, tableLoc.y+')');
-      outputBox.scrollTop = outputBox.scrollHeight;
       const msg = `(${tableLoc.x},${tableLoc.y})\n`;
-      outputBox.value = outputBox.value + msg;
+      //scroll before print
+      outputBox.scrollTop = outputBox.scrollHeight;
+      outputBox.value += msg;
+      //outputBox.scrollTop = outputBox.scrollHeight;
+      //outputBox.value = outputBox.value + msg;
       //outputBox.value = `touch (${tableLoc.x},${tableLoc.y})`
       //accessCell(tableIndex, cellElemArray);
       cell.access();
@@ -149,6 +182,12 @@ function createBoard(lines){
   const board = document.getElementById('myboard');
   let count_x = 0;
   let count_y = 0;
+  // reset global
+  SIZE_Y = 0;
+  SIZE_X = 0;
+  IDX_MAX = 0;
+  // delete previous table row
+  while (board.rows.length > 0) board.deleteRow(0);
   // console.log(lines);
   for (let line = 0; line < lines.length; line++) {
     // console.log(line + ' --> ' + lines[line]);
@@ -191,7 +230,7 @@ function createBoard(lines){
 function fileChanged(input) {
   console.log(input);
   for (let i = 0; i < input.files.length; i++) {
-    console.log(input.files[i]);
+    //console.log(input.files[i]);
     reader.readAsText(input.files[i]); // reading file
   }
 }
