@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>File Input Test</title>
+    <style>
+      table.msboard {
+        float : left;
+        margin-left: 2vw;
+        margin-right: 2vw;
+        /*
+        position: absolute;
+        top: 10%;
+        left: 30%;
+        margin-top: -10px;
+        margin-left: -30px;
+        */
+      }
+      td.init {
+        width: 4vw;
+        height: 4vw;
+        text-align: center;
+        font-size: 2vw;
+        cursor: pointer;
+        background-color: #ddd;
+      }
+      td.touch {
+        background-color: #f0f0f0;
+        color: #f00;
+      }
+      table.msboard td:hover {
+        background-color: #eee;
+      }
+      .box {
+        font-size: 2vw;
+        /*
+        position: absolute;
+        top: 8%;
+        */
+      }
+      .scrollbox {
+        width: 20vw;
+        height: 40vw;
+        border: 1px solid #000;
+        overflow-y: scroll;
+      }
+      .consolebox {
+        width: 20vw;
+        height: 4vw;
+        border: 1px solid #000;
+        overflow-y: scroll;
+      }
+    </style>
+    <script src="./msselect.js"></script>
+    <script>
+      // global
+      let SIZE_Y = 0;
+      let SIZE_X = 0;
+      let IDX_MAX = 0;
+      const reader = new FileReader(); // FileReader object
+      reader.addEventListener("load", function(){
+        const inputBox = document.getElementById('myinput');
+        const consoleBox = document.getElementById('myconsole');
+        // output to console
+        consoleBox.value = `read ${inputBox.files[0].name}\n`
+        //pre.innerHTML = reader.result;
+        const lines = this.result.split(/\r\n|\n/);
+        createBoard(lines);
+        addCellEventListener();
+        addResetEventListener();
+      }, {once: true});
+    </script>
+  </head>
+  <body>
+    <form id="myform">
+    <p>
+      <label class="box">ボードを選んでください：</label>
+      <input type="file" id="myinput" class="box" onchange="fileChanged(this)"/>
+      <button type="reset" class="box">リセット</button>
+    </p>
+    <p>
+      <table id="myboard" class="msboard"></table>
+      <textarea id="myconsole" class="box consolebox" placeholder="console log"></textarea>
+      <BR>
+      <textarea id="myoutput" class="box scrollbox" placeholder="touch cell (x,y)"></textarea>
+    </p>
+    </form>
+  </body>
+</html>
