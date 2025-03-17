@@ -16,6 +16,7 @@ function pibotAdjacent(cur, min, max) {
     }
   }
 }
+
 function cellElem(index, elemList) {
   // array pointer
   this.list = elemList;
@@ -120,6 +121,77 @@ function pivotCell(index, cellElemArray, cell) {
     }
   }
 }
+class Board {
+  constructor(){
+    this.nameList = [];
+    this.dataList = [];
+  }
+  append(name, data) {
+    this.nameList.push(name);
+    this.dataList.push(data);
+  }
+  fetch(name) {
+    let idx = this.nameList.indexOf(name);
+    return (idx < 0) ? "undef" : this.dataList[idx];
+  }
+}
+
+function boardSet(name, bdData) {
+  this.init = function() {
+    this.list = [];
+    this.name = [];
+  }
+  this.append = function() {
+    this.list.push(bdData);
+    this.name.push(name);
+  }
+  this.name2 = name;
+  this.list2 = bdData;
+  this.get = function() {
+    let num = this.list.indexOf(name);
+    return this.list[num];
+  }
+}
+function readSampleBoard(name) {
+  const bdroot = new Board();
+  bdroot.append('board-1', ['111','191','111']);
+  bdroot.append('board-2', ['111111','191191','111111','111111','191191','111111']);
+  //console.log(bdroot);
+  //console.log('fetch1', bdroot.fetch('board-1'));
+  //console.log('fetch2', bdroot.fetch('board-2'));
+  const lines = bdroot.fetch(name);
+  createBoard(lines);
+  addCellEventListener();
+  addResetEventListener();
+}
+function readSampleBoard2(name) {
+  const bdroot = new boardSet('board-0', 'sample 2');
+  //bdroot.init();
+  //bdroot.append('board-1', ['111','191','111']);
+  bdroot.append('board-1', 'sample data');
+  console.log(name, bdroot.name);
+  console.log(name, bdroot.list);
+  const lines = bdroot.get(name);
+  createBoard(lines);
+  addCellEventListener();
+  addResetEventListener();
+}
+function addSelectEventListener(){
+  const button = document.getElementById('mybtn');
+  const consoleBox = document.getElementById('myconsole');
+  const bdsel = document.getElementById('myselect');
+  button.addEventListener('click', function(){
+    // const bdidx = bdsel.selectedIndex;
+    // output to console
+    const bdname = bdsel.value;
+    const msg = `select ${bdname}\n`;
+    //scroll before print
+    consoleBox.scrollTop = consoleBox.scrollHeight;
+    consoleBox.value += msg;
+    readSampleBoard(bdname);
+  });
+}
+
 function addResetEventListener(){
   const resetForm = document.getElementById('myform');
   resetForm.addEventListener('reset', function(event) {

@@ -77,8 +77,17 @@
   <body>
     <form id="myform">
     <p>
-      <label class="box">ボードを選んでください：</label>
+      <label class="box">ボード選択（ファイルから）：</label>
       <input type="file" id="myinput" class="box" onchange="fileChanged(this)"/>
+      <BR>
+      <label class="box">ボード選択（サンプルから）：</label>
+      <select name="board" id="myselect" class="box">
+        <option value="board-1">board-1 (10x10)</option>
+        <option value="board-2">board-2 (8x8)</option>
+      </select>
+      <button type="button" id="mybtn" class="box">選択完了</button>
+      <BR>
+      <label class="box">ボード初期化：</label>
       <button type="reset" class="box">リセット</button>
     </p>
     <p>
@@ -88,5 +97,8 @@
       <textarea id="myoutput" class="box scrollbox" placeholder="touch cell (x,y)"></textarea>
     </p>
     </form>
+    <script>
+      addSelectEventListener();    
+    </script>
   </body>
 </html>
