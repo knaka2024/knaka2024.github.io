@@ -4,101 +4,133 @@
     <meta charset="utf-8" />
     <title>File Input Test</title>
     <style>
-      table.msboard {
-        float : left;
-        margin-left: 2vw;
-        margin-right: 2vw;
+      html {
+        font-size: 62.5%;
+        /*16px * 62.5% = 10px*/
+      }
+      .left {
+        float: left;
+      }
+      .right {
+        float: right;
+      }
+      .hdiv {
+        display: table;
+      }
+      .vdiv {
+        display: flex;
+        flex-flow: column;
+      }
+      .box {
+        font-size: 1.6rem;
+        margin-top: 1rem;
+        margin-left: 1rem;
         /*
         position: absolute;
-        top: 10%;
-        left: 30%;
-        margin-top: -10px;
-        margin-left: -30px;
+        */
+      }
+      .scrollbox {
+        width: 10rem;
+        height: 20rem;
+        font-size: 1.2rem;
+        border: 1px solid #000;
+        overflow-y: scroll;
+      }
+      .consolebox {
+        width: 30rem;
+        height: 4rem;
+        font-size: 1.2rem;
+        border: 1px solid #000;
+        overflow-y: scroll;
+      }
+      table.msboard {
+        display: inline-block;
+        vertical-align: top;
+        margin-top: 1rem;
+        margin-left: 1rem;
+        /*
+        position: absolute;
         */
       }
       td.init {
-        width: 4vw;
-        height: 4vw;
+        width: 2rem;
+        height: 2rem;
         text-align: center;
-        font-size: 2vw;
+        font-size: 1.2rem;
         cursor: pointer;
         background-color: #ddd;
       }
+      td.invisible {
+        color: #ddd;
+      }
       td.touch {
-        background-color: #f0f0f0;
+        background-color: #eee;
+        color: #00f;
+        font-weight: bold;
+      }
+      td.bomb {
+        background-color: #eee;
+        color: #f00;
+      }
+      td.safe {
+        background-color: #eee;
+        color: #000;
+      }
+      td.penalty {
+        background-color: #eee;
         color: #f00;
       }
       table.msboard td:hover {
         background-color: #eee;
       }
-      .box {
-        font-size: 2vw;
-        /*
-        position: absolute;
-        top: 8%;
-        */
-      }
-      .scrollbox {
-        width: 20vw;
-        height: 40vw;
-        border: 1px solid #000;
-        overflow-y: scroll;
-      }
-      .consolebox {
-        width: 20vw;
-        height: 4vw;
-        border: 1px solid #000;
-        overflow-y: scroll;
-      }
     </style>
     <script src="./msselect.js"></script>
     <script>
-      // global
+      // global variables
       let SIZE_Y = 0;
       let SIZE_X = 0;
       let IDX_MAX = 0;
-      const reader = new FileReader(); // FileReader object
-      reader.addEventListener("load", function(){
-        const inputBox = document.getElementById('myinput');
-        const consoleBox = document.getElementById('myconsole');
-        // output to console
-        const msg = `read ${inputBox.files[0].name}\n`;
-        //scroll before print
-        consoleBox.scrollTop = consoleBox.scrollHeight;
-        consoleBox.value += msg;
-        //pre.innerHTML = reader.result;
-        const lines = this.result.split(/\r\n|\n/);
-        createBoard(lines);
-        addCellEventListener();
-        addResetEventListener();
-      });
+      let VISIBILITY = 0;
+      let SCORE = 0;
     </script>
   </head>
   <body>
-    <form id="myform">
-    <p>
-      <label class="box">ボード選択（ファイルから）：</label>
-      <input type="file" id="myinput" class="box" onchange="fileChanged(this)"/>
-      <BR>
-      <label class="box">ボード選択（サンプルから）：</label>
-      <select name="board" id="myselect" class="box">
-        <option value="board-1">board-1 (10x10)</option>
-        <option value="board-2">board-2 (8x8)</option>
-      </select>
-      <button type="button" id="mybtn" class="box">選択完了</button>
-      <BR>
-      <label class="box">ボード初期化：</label>
-      <button type="reset" class="box">リセット</button>
-    </p>
-    <p>
-      <table id="myboard" class="msboard"></table>
+    <div class="vdiv">
+      <div class="hdiv">
+        <label class="box">ボード選択（ファイルから）：</label>
+        <input type="file" id="myinput" class="box" onchange="fileChanged(this)"/>
+      </div>
+      <div class="hdiv">
+        <label class="box">ボード選択（サンプルから）：</label>
+        <select name="board" id="myselect" class="box"></select>
+        <button type="button" id="mybtn" class="box">選択完了</button>
+      </div>
       <textarea id="myconsole" class="box consolebox" placeholder="console log"></textarea>
-      <BR>
-      <textarea id="myoutput" class="box scrollbox" placeholder="touch cell (x,y)"></textarea>
-    </p>
-    </form>
+      <div class="hdiv">
+        <label class="box">ボード初期化：</label>
+        <button id="myreset" type="reset" class="box">リセット</button>
+        <label class="box">盤面データ表示切替：</label>
+        <button type="button" id="mytoggle" class="box" onclick="foreachUntouchCells('toggleVisibility');">表示トグル</button>
+      </div>
+      <label class="box">盤面のセル (X,Y) は横方向 X、縦方向 Y、左上が (0,0) となります</label>
+      <form id="myform">
+        <div class="hdiv">
+          <textarea id="mydialog" class="box scrollbox" placeholder="touch cell (x,y)"></textarea>
+          <table id="myboard" class="msboard"></table>
+          <textarea id="myscore" class="box scrollbox" placeholder="score count"></textarea>
+        </div>
+        <div class="hdiv">
+          <label class="box">セル選択中止：</label>
+          <button type="button" id="myfinish" class="box">ここで終了</button>
+          <label class="box">スコア：</label>
+          <output id="myresult" class="box">result...</output>
+        </div>
+      </form>
+    </div>
     <script>
+      createBoardSelector();
       addSelectEventListener();
+      addResetEventListener();
     </script>
   </body>
 </html>
