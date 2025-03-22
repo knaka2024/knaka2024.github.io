@@ -8,6 +8,12 @@ function pibotAdjacent(cur, min, max) {
   }
   return [...list];
 }
+// dummy cell element node
+class cellElemNode {
+  constructor(value) {
+    this.innerHTML = value;
+  }
+}
 class cellElem {
   constructor(index, elemList) {
     // array pointer
@@ -21,10 +27,14 @@ class cellElem {
     const y = parseInt(this.index / SIZE_X);
     return [x,y];
   }
+  update() {
+    this.value = this.node.innerHTML;
+  }
   checkRange() {
     return ((this.index < 0)||(this.index > IDX_MAX)) ? 0 : 1;
   }
   init() {
+    // initialize cell. clear all classes and reset
     let node = this.node;
     node.className = 'init invisible';
   }
@@ -39,6 +49,14 @@ class cellElem {
   untouch() {
     let node = this.node;
     node.classList.remove('touch');
+  }
+  flag() {
+    let node = this.node;
+    node.classList.add('flag');
+  }
+  unflag() {
+    let node = this.node;
+    node.classList.remove('flag');
   }
   close() {
     let node = this.node;
@@ -65,6 +83,9 @@ class cellElem {
   isTouch() {
     return this.node.classList.contains('touch');
   }
+  isFlag() {
+    return this.node.classList.contains('flag');
+  }
   isEmpty() {
     return (this.value == 0) ? 1 : 0;
   }
@@ -73,7 +94,7 @@ class cellElem {
   }
   access(source) {
     if (source == 'primary') {
-      if (!this.isTouch()) {
+      if (!this.isTouch() && !this.isFlag() && !FLAG) {
         const [x, y] = this.location();
         printDialog(`(${x},${y})`);
       }
@@ -125,10 +146,27 @@ function printScore(cell, incr, type) {
 function printResult(score) {
   const resultBox = document.getElementById('myresult');
   let msg = `${score}`;
+  let finalScore = score;
   if (score < 0) {
     msg += ' => count as 0';
+    finalScore = 0;
   }
   resultBox.value = msg;  
+  // print to console
+  printConsole(`score ${finalScore} ${BOARD_NAME}`);
+}
+function printStatus() {
+  const statusBox = document.getElementById('mystatus');
+  let msg = FLAG ? 'on' : 'off';
+  statusBox.value = msg;  
+  // print to console
+  printConsole(`toggle ${msg}`);
+}
+function printRemain(msg) {
+  const remainBox = document.getElementById('myremain');
+  remainBox.value = msg;  
+  // print to console
+  printConsole(`remaining ${msg}`);
 }
 function countScore(cell, type) {
   let score = cell.score();
@@ -154,13 +192,35 @@ function accessCell(index, cellElemArray, cell) {
   }
   if (cell.isTouch()) {
     console.log('skip', index);
+    console.log('classname', cell.node.className, cell.index);
+  } else if (FLAG) {
+    if (cell.isFlag()) {
+      cell.unflag();
+      addEachCellEventListener(cell);
+    } else {
+      cell.flag();
+    }
+    // exit from flag update mode
+    flagUpdate('off');
+  } else if (cell.isFlag()) {
+    console.log('skip flag', index);
+    console.log('classname', cell.node.className, cell.index);
   } else {
     cell.touch();
+    // remove flag automatically
+    cell.unflag();
     console.log('touch', index);
+    console.log('classname', cell.node.className, cell.index);
+    //bug both lines
+    //console.log('check array 15(ary)', cellElemArray[15]);
+    //console.log('check array 15(lst)', cell.list[15]);
+    //foreachUntouchCells('countAlive');
+    //bug
+    console.log('check array 15-2', cellElemArray[15]);
     //if (cell.value == 0) {
     if (cell.isEmpty()) {
       console.log('empty', index);
-      pivotCell(index, cellElemArray, cell);
+      pivotCell(index, cellElemArray, cell, 'expand_region');
     } else if (cell.isBomb()) {
       cell.bomb();
       const [x, y] = cell.location();
@@ -170,7 +230,7 @@ function accessCell(index, cellElemArray, cell) {
     countScore(cell, 'obtain');
     // check all alive cells touched
     const remains = foreachUntouchCells('countAlive');
-    console.log('remains', remains);
+    printRemain(remains);
     if (remains == 0) {
       finishSelection();
     }
@@ -178,7 +238,7 @@ function accessCell(index, cellElemArray, cell) {
   return 1;
 }
 // pivot around given index (board location)
-function pivotCell(index, cellElemArray, cell) {
+function pivotCell(index, cellElemArray, cell, task) {
   let pivot = [];
   const [x, y] = cell.location();
   const x_idx = pibotAdjacent(x, 0, SIZE_X-1);
@@ -188,13 +248,29 @@ function pivotCell(index, cellElemArray, cell) {
       pivot.push(SIZE_X*y_idx[j] + x_idx[i]);
     }
   }
+  //console.log('pivot', index, 'are', pivot);
+  let mines = 0;
   for (let i=0; i < pivot.length; i++) {
-    if (i!=index) {
+    if (pivot[i]!=index) {
       const adjCell = new cellElem(pivot[i], cellElemArray);
       const [adjx, adjy] = adjCell.location();
-      console.log('pivot', pivot[i], '('+adjx, adjy+')');
-      adjCell.access('secondary');
+      //console.log('pivot', pivot[i], '('+adjx, adjy+')', 'value', adjCell.value, 'i', i, 'index', index);
+      switch (task) {
+        case 'expand_region': adjCell.access('secondary'); break;
+        case 'count_mines':
+          if (adjCell.isBomb()) {
+            // bomb cell count
+            mines++;
+          }
+          break;
+      }
     }
+  }
+  switch (task) {
+    case 'count_mines':
+      cell.node.innerHTML = mines;
+      return mines;
+      break;
   }
 }
 class Board {
@@ -231,20 +307,32 @@ class Board {
   get_lines(name) {
     const data = this.fetch(name);
     let lines = [];
-    const header = data[0].match(/^\s*(\d+)\s+(\d+)\s*$/);
+    // header is size_x size_y board_name
+    // \s matches newline !!
+    const header = data[0].match(/^[ ]*(\d+)[ ]+(\d+)/);
+    const itemList = data[0].split(/[ ]+/);
+    //console.log('header is', header);
     if (header!=null) {
-        // 1st line is (size_x, size_y)
-        this.size_x = Number(header[1]);
-        this.size_y = Number(header[2]);
-        // remove all spaces or newlines
-        let trimdata = data[1].replace(/\s|\r|\n/g,'');
-        for (let i = 0; i < trimdata.length; i+=this.size_x) {
-          let line = trimdata.slice(i, i+this.size_x);
-          lines.push(line);
-          //console.log('line', i, 'is', line);
-        }
+      // 1st line is (size_x, size_y)
+      this.size_x = Number(header[1]);
+      this.size_y = Number(header[2]);
+      // read board name from 3rd item
+      if (itemList.length >= 3) {
+        BOARD_NAME = itemList[2];
+      } else {
+        BOARD_NAME = name;
+      }
+      // remove all spaces or newlines into 1 line
+      let trimdata = data[1].replace(/\s|\r|\n/g,'');
+      for (let i = 0; i < trimdata.length; i+=this.size_x) {
+        let line = trimdata.slice(i, i+this.size_x);
+        lines.push(line);
+        //console.log('line', i, 'is', line);
+      }
     } else {
-      //console.log('data is', data, data.length);
+      // header is not given
+      BOARD_NAME = name;
+      // console.log('data is', data, data.length);
       if (data.length == 1) {
         // board data is fetched from file including newlines
         lines = removeEmptyItems(data[0].split(/\r\n|\n/));
@@ -261,6 +349,7 @@ class Board {
   }
   load(name) {
     const lines = this.get_lines(name);
+    printConsole(`board ${BOARD_NAME}`);
     resetBoardForm();
     createBoard(lines);
     initializeBoard();
@@ -289,9 +378,14 @@ function removeEmptyItems(array) {
 }
 function loadSampleBoard() {
   const bdroot = new Board();
-  bdroot.append('board-1', ['3 3','111191111']);
-  bdroot.append('board-2', ['111111','191191','111111','111111','191191','111111']);
-  bdroot.append('board-3', ['10 10', '0001110000 0112911110 1292111921 1921112129 1110191011 0112221000 0193910000 0119211110 0011101910 0000001110']);
+  const rand = new randomparam();
+  //bdroot.append('board-1', ['3 3','111191111']);
+  //bdroot.append('board-2', ['111111','191191','111111','111111','191191','111111']);
+  //bdroot.append('board-3', ['10 10 board-10x10-3', '0001110000 0112911110 1292111921 1921112129 1110191011 0112221000 0193910000 0119211110 0011101910 0000001110']);
+  //bdroot.append(...generateBoard(4, 4, 3, rand));
+  bdroot.append(...generateBoard(4, 4, 2, rand));
+  bdroot.append(...generateBoard(8, 8, 8, rand));
+  bdroot.append(...generateBoard(16, 16, 32, rand));
   return bdroot;
 }
 function readSampleBoard(name) {
@@ -332,6 +426,7 @@ function fileChanged(input) {
 function addFileLoadEventListener(reader, fileName) {
   reader.addEventListener("load", function(){
     const bdroot = new Board();
+    //console.log(fileName, this.result);
     bdroot.append(fileName, [ this.result ]);
     bdroot.load(fileName);
   });
@@ -342,7 +437,7 @@ function addSelectEventListener() {
   button.addEventListener('click', function(){
     // const bdidx = bdsel.selectedIndex;
     const bdname = bdsel.value;
-    printConsole(`select ${bdname}`);
+    // printConsole(`select ${bdname}`);
     readSampleBoard(bdname);
   });
 }
@@ -365,6 +460,7 @@ function initializeBoard() {
   //reset score and visibility
   SCORE = 0;
   VISIBILITY = 0;
+  flagUpdate('init');
 }
 function removeEventListener() {
   const board = document.getElementById('myboard');
@@ -381,6 +477,122 @@ function removeEventListener() {
     const clonedCell = button.cloneNode(true);
     button.replaceWith(clonedCell);
   }
+}
+function addEachCellEventListener(cell) {
+  const board = document.getElementById('myboard');
+  const cellElemLists = board.getElementsByTagName('td');
+  // put event listener for flagged cells
+  cellElemLists[cell.index].addEventListener('click', function(event) {
+    startSelection(cell.list, cell.index);
+  }, {once: true});  
+}
+function flagUpdate(task) {
+  switch (task) {
+    case 'init': FLAG = 0; break;
+    case 'on': FLAG = 1; break;
+    case 'off':
+      FLAG = 0;
+      //toggleFlagCellEventListener('disable');
+      break;
+    case 'toggle':
+      FLAG = !FLAG;
+      if (FLAG) {
+        toggleFlagCellEventListener('enable');
+      } else {
+        foreachUntouchCells('removeEvents');
+        //toggleFlagCellEventListener('disable');
+      }
+      break;
+  }
+  printStatus();
+}
+function toggleFlagCellEventListener(task) {
+  const board = document.getElementById('myboard');
+  const cellElemLists = board.getElementsByTagName('td');
+  const cellElemArray = [...cellElemLists];
+  // foreach table cell
+  for (let i=0; i < cellElemArray.length; i++) {
+    const cell = new cellElem(i, cellElemArray);
+    if (cell.isFlag()) {
+      let bindedHandler = startSelection.bind(cellElemArray[i], cellElemArray, i);
+      switch (task) {
+        case 'enable' :
+          // put event listener for flagged cells
+          cellElemArray[i].addEventListener('click', bindedHandler, {once: true});
+          break;
+        case 'disable' :
+          // doesn't work
+          cellElemArray[i].removeEventListener('click', bindedHandler);
+          break;
+      }
+    }
+  }
+}
+function toggleFlagCellEventListener3(task) {
+  const board = document.getElementById('myboard');
+  const cellElemLists = board.getElementsByTagName('td');
+  const cellElemArray = [...cellElemLists];
+  // foreach table cell
+  for (let i=0; i < cellElemArray.length; i++) {
+    const cell = new cellElem(i, cellElemArray);
+    if (cell.isFlag()) {
+      switch (task) {
+        case 'enable' :
+          // put event listener for flagged cells
+          cellElemArray[i].addEventListener('click', function(){
+            const tableIndex = cellElemArray.indexOf(this);
+            const cell = new cellElem(tableIndex, cellElemArray);
+            cell.access('primary');
+          }, {once: true});
+          break;
+        case 'disable' :
+          console.log('class name0', i, cell.node.className);
+          // remove event listener from flagged cells
+          // to remove event, clone previous node and replace with it
+          const clonedCell = cellElemArray[i].cloneNode(true);
+          cellElemArray[i].replaceWith(clonedCell);
+          console.log('class name1', i, cell.node.className);
+          break;
+      }
+    }
+  }
+}
+function toggleFlagCellEventListener2() {
+  const board = document.getElementById('myboard');
+  const cellElemLists = board.getElementsByTagName('td');
+  const cellElemArray = [...cellElemLists];
+  // foreach table cell
+  for (let i=0; i < cellElemArray.length; i++) {
+    const cell = new cellElem(i, cellElemArray);
+    if (cell.isFlag()) {
+      if (FLAG) {
+        // put event listener for flagged cells
+        //cellElemArray[i].addEventListener('click', function(event) {
+       //  startSelection(cellElemArray, i);
+        //}, {once: true});
+        cellElemArray[i].addEventListener('click', function(){
+          const tableIndex = cellElemArray.indexOf(this);
+          const cell = new cellElem(tableIndex, cellElemArray);
+          console.log('check array 13 before cell.access(529)', tableIndex, cellElemArray[13]);
+          console.log('check array 14 before cell.access(529)', tableIndex, cellElemArray[14]);
+          console.log('check array 15 before cell.access(529)', tableIndex, cellElemArray[15]);
+          cell.access('primary');
+        }, {once: true});
+      } else {
+        console.log('class name0', i, cell.node.className);
+        // remove event listener from flagged cells
+        // to remove event, clone previous node and replace with it
+        const clonedCell = cellElemLists[i].cloneNode(true);
+        cellElemLists[i].replaceWith(clonedCell);
+        console.log('class name1', i, cell.node.className);
+      }
+    }
+  }
+}
+function startSelection(cellElemArray, index, event) {
+  console.log('binded args', index, cellElemArray.length);
+  const cell = new cellElem(index, cellElemArray);
+  cell.access('primary');
 }
 function addCellEventListener() {
   const board = document.getElementById('myboard');
@@ -401,6 +613,9 @@ function addCellEventListener() {
       // get click position. upper left is 0 and start from 0,1,2,..IDX_MAX
       const tableIndex = cellElemArray.indexOf(this);
       const cell = new cellElem(tableIndex, cellElemArray);
+      for (let j=0; j < cellElemArray.length; j++) {
+        console.log('check array', j,'before cell.access(570)', tableIndex, cellElemArray[j]);
+      }
       cell.access('primary');
     }, {once: true});
   }
@@ -459,6 +674,9 @@ function foreachUntouchCells(task) {
   const cellElemLists = board.getElementsByTagName('td');
   const cellElemArray = [...cellElemLists];
   let counter = 0;
+  let alives = [];
+  console.log('check array 15-3', cellElemArray[15]);
+  console.log('check array 15-4', cellElemLists[15]);
   for (let i=0; i < cellElemArray.length; i++) {
     const cell = new cellElem(i, cellElemArray);
     //console.log('change visibility', i);
@@ -482,14 +700,25 @@ function foreachUntouchCells(task) {
         case 'countAlive':
           if (!cell.isBomb()) {
             counter++;
+            alives.push(i);
+          }
+          break;
+        case 'removeEvents':
+          if (cell.isFlag()) {
+            const clonedCell = cellElemArray[i].cloneNode(true);
+            cellElemArray[i].replaceWith(clonedCell);
           }
           break;
       }
     }
+    //console.log('class name (foreach)', i, cell.node.className);
   }
   switch (task) {
-    case 'toggleVisibility': VISIBILITY=!VISIBILITY; break;
-    case 'countAlive': return counter; break;
+    case 'toggleVisibility': VISIBILITY = !VISIBILITY; break;
+    case 'countAlive':
+      console.log('alives', alives);
+      return counter;
+      break;
   }
 }
 function finishSelection() {
@@ -505,14 +734,99 @@ function addfinishEventListener() {
   const button = document.getElementById('myfinish');
   button.addEventListener('click', finishSelection, {once: true});  
 }
-function addfinishEventListener2() {
-  const button = document.getElementById('myfinish');
-  button.addEventListener('click', function(){
-    console.log('finish score is', SCORE);
-    foreachUntouchCells('countPenalty');
-    foreachUntouchCells('closure');
-    printResult(SCORE);
-    // clear board event listener
-    removeEventListener();
-  }, {once: true});  
+
+class randomparam {
+  constructor() {
+    this.a = 373;
+    this.b = 1779;
+    this.m = 52397;
+    this.seed = [3456];
+    this.bp = 0;
+    this.value = this.seed[0];
+    this.iterate = 0;
+  }
+  update(newValue) {
+    let loop = 0;
+    for (let j=0; j < this.seed.length; j++) {
+      if (newValue == this.seed[j]) {
+        loop = 1;
+        break;
+      }
+    }
+    if (loop) {
+      // use the last updated seed
+      newValue = this.seed[0];
+      newValue++;
+      this.bp++;
+      this.seed.unshift(newValue);
+      //console.log('update seed', this.seed);
+    }
+    return newValue;
+  }
+  next() {
+    let newValue = (this.a*this.value + this.b + this.bp) % this.m;
+    this.value = this.update(newValue);
+    this.iterate++;
+    let normalize = this.value / this.m;
+    //console.log('random value', this.value, 'iterate', this.iterate);
+    return normalize;
+  }
+}
+function createMines(rand, cellCount, minesCount) {
+  let mines = [];
+  for (let i=0; i < minesCount; i++) {
+    let value = 0;
+    do {
+      value = parseInt(rand.next() * cellCount);
+    } while (mines.indexOf(value) >= 0);
+    mines.push(value);
+  }
+  //console.log('mines', mines);
+  return [...mines];
+}
+function createCellElemArray(cellSize, mines) {
+  const cellElemArray = []; 
+  for (let i=0; i < cellSize; i++) {
+    let value = 0;
+    if (mines.indexOf(i) >= 0) {
+      value = 9;
+    }
+    const node = new cellElemNode(value);
+    cellElemArray.push(node);
+  }
+  //console.log(cellElemArray);
+  return [...cellElemArray];
+}
+// generate board. return 'boardName' 'dataList...'
+// distroy SIZE_X and SIZE_Y
+function generateBoard(size_x, size_y, minesCount, rand) {
+  SIZE_X = size_x;
+  SIZE_Y = size_y;
+  // skip the first rand to generate rand.iterate
+  const discard = rand.next();
+  const boardId = rand.iterate;
+  const cellSize = size_x * size_y;
+  const mines = createMines(rand, cellSize, minesCount);
+  const cellElemArray = createCellElemArray(cellSize, mines);
+  const boardName = `board_${size_x}x${size_y}_${minesCount}_${boardId}`;
+  let data = [];
+  data[0] = `${size_x} ${size_y} ${boardName}`;
+  data[1] = '';
+  for (let i=0; i < cellElemArray.length; i++) {
+    const cell = new cellElem(i, cellElemArray);
+    if (!cell.isBomb()) {
+      let mcount = pivotCell(i, cellElemArray, cell, 'count_mines');
+      //console.log('pivotCell', i, mcount);
+    }
+    cell.update();
+    data[1] += cell.value;
+    if (((i+1) % size_x)==0) {
+      data[1] += '\n';
+    }
+  }
+  //console.log(data);
+  //console.log(cellElemArray);
+  let boardData = [boardName, data];
+  //console.log(boardData);
+  return [...boardData];
 }

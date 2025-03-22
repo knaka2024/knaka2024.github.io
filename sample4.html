@@ -72,6 +72,11 @@
         background-color: #eee;
         color: #f00;
       }
+      td.flag {
+        background: url(flag.png);
+        background-size: cover;
+        color: transparent;
+      }
       td.safe {
         background-color: #eee;
         color: #000;
@@ -92,6 +97,8 @@
       let IDX_MAX = 0;
       let VISIBILITY = 0;
       let SCORE = 0;
+      let BOARD_NAME = '<board_name_unknown>';
+      let FLAG = 0;
     </script>
   </head>
   <body>
@@ -103,7 +110,7 @@
       <div class="hdiv">
         <label class="box">ボード選択（サンプルから）：</label>
         <select name="board" id="myselect" class="box"></select>
-        <button type="button" id="mybtn" class="box">選択完了</button>
+        <button type="button" id="mybtn" class="box">選択</button>
       </div>
       <textarea id="myconsole" class="box consolebox" placeholder="console log"></textarea>
       <div class="hdiv">
@@ -115,13 +122,20 @@
       <label class="box">盤面のセル (X,Y) は横方向 X、縦方向 Y、左上が (0,0) となります</label>
       <form id="myform">
         <div class="hdiv">
+          <label class="box">旗を立てる：</label>
+          <button type="button" id="myflag" class="box" onclick="flagUpdate('toggle');">旗トグル</button>
+          <output id="mystatus" class="box">off</output>
+          <label class="box">残りセル数：</label>
+          <output id="myremain" class="box">remaining cells...</output>
+        </div>
+        <div class="hdiv">
           <textarea id="mydialog" class="box scrollbox" placeholder="touch cell (x,y)"></textarea>
           <table id="myboard" class="msboard"></table>
           <textarea id="myscore" class="box scrollbox" placeholder="score count"></textarea>
         </div>
         <div class="hdiv">
-          <label class="box">セル選択中止：</label>
-          <button type="button" id="myfinish" class="box">ここで終了</button>
+          <label class="box">セル選択終了：</label>
+          <button type="button" id="myfinish" class="box">ここで採点</button>
           <label class="box">スコア：</label>
           <output id="myresult" class="box">result...</output>
         </div>
