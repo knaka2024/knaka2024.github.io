@@ -1,13 +1,4 @@
-// get three location of cur-1, cur, cur+1
-function pibotAdjacent(cur, min, max) {
-  let list = [];
-  for (let i=(cur-1); i <= (cur+1); i++) {
-    if ((i >= min)&&(i <= max)) {
-       list.push(i);
-    }
-  }
-  return [...list];
-}
+// Minesweeper control program by keisuke Nakamura (2025/3/23)
 // dummy cell element node
 class cellElemNode {
   constructor(value) {
@@ -99,7 +90,7 @@ class cellElem {
         printDialog(`(${x},${y})`);
       }
     }
-    accessCell(this.index, this.list, this);
+    accessCell(this.index, this.list, this, source);
   }
   score() {
       let incr = Number(this.value);
@@ -160,7 +151,7 @@ function printStatus() {
   let msg = FLAG ? 'on' : 'off';
   statusBox.value = msg;  
   // print to console
-  printConsole(`toggle ${msg}`);
+  printConsole(`flag ${msg}`);
 }
 function printRemain(msg) {
   const remainBox = document.getElementById('myremain');
@@ -184,42 +175,34 @@ function countScore(cell, type) {
   printScore(cell, incr, type);
 }
 // access given index (board location) 
-function accessCell(index, cellElemArray, cell) {
+function accessCell(index, cellElemArray, cell, source) {
   if (!cell.checkRange()) {
     // out of range
     console.log('#ER index out of range', index);
     return 0;
   }
   if (cell.isTouch()) {
-    console.log('skip', index);
-    console.log('classname', cell.node.className, cell.index);
+    console.log('skip', index, source);
   } else if (FLAG) {
     if (cell.isFlag()) {
+      console.log('flag off', index, source);
       cell.unflag();
       addEachCellEventListener(cell);
     } else {
+      console.log('flag on', index, source);
       cell.flag();
     }
     // exit from flag update mode
-    flagUpdate('off');
-  } else if (cell.isFlag()) {
-    console.log('skip flag', index);
-    console.log('classname', cell.node.className, cell.index);
+    flagUpdate('toggle');
+  } else if (cell.isFlag() && (source == 'primary')) {
+    console.log('skip flag', index, source);
   } else {
     cell.touch();
     // remove flag automatically
     cell.unflag();
-    console.log('touch', index);
-    console.log('classname', cell.node.className, cell.index);
-    //bug both lines
-    //console.log('check array 15(ary)', cellElemArray[15]);
-    //console.log('check array 15(lst)', cell.list[15]);
-    //foreachUntouchCells('countAlive');
-    //bug
-    console.log('check array 15-2', cellElemArray[15]);
-    //if (cell.value == 0) {
+    console.log('touch', index, source);
     if (cell.isEmpty()) {
-      console.log('empty', index);
+      console.log('empty', index, source);
       pivotCell(index, cellElemArray, cell, 'expand_region');
     } else if (cell.isBomb()) {
       cell.bomb();
@@ -236,6 +219,16 @@ function accessCell(index, cellElemArray, cell) {
     }
   }
   return 1;
+}
+// get three location of cur-1, cur, cur+1
+function pibotAdjacent(cur, min, max) {
+  let list = [];
+  for (let i=(cur-1); i <= (cur+1); i++) {
+    if ((i >= min)&&(i <= max)) {
+       list.push(i);
+    }
+  }
+  return [...list];
 }
 // pivot around given index (board location)
 function pivotCell(index, cellElemArray, cell, task) {
@@ -255,8 +248,11 @@ function pivotCell(index, cellElemArray, cell, task) {
       const adjCell = new cellElem(pivot[i], cellElemArray);
       const [adjx, adjy] = adjCell.location();
       //console.log('pivot', pivot[i], '('+adjx, adjy+')', 'value', adjCell.value, 'i', i, 'index', index);
+      //console.log('pivot from', index, 'to', pivot[i],'('+i+'/'+pivot.length+')');
       switch (task) {
-        case 'expand_region': adjCell.access('secondary'); break;
+        case 'expand_region':
+          adjCell.access('secondary');
+          break;
         case 'count_mines':
           if (adjCell.isBomb()) {
             // bomb cell count
@@ -384,8 +380,13 @@ function loadSampleBoard() {
   //bdroot.append('board-3', ['10 10 board-10x10-3', '0001110000 0112911110 1292111921 1921112129 1110191011 0112221000 0193910000 0119211110 0011101910 0000001110']);
   //bdroot.append(...generateBoard(4, 4, 3, rand));
   bdroot.append(...generateBoard(4, 4, 2, rand));
+  bdroot.append(...generateBoard(4, 4, 4, rand));
   bdroot.append(...generateBoard(8, 8, 8, rand));
+  bdroot.append(...generateBoard(8, 8, 16, rand));
   bdroot.append(...generateBoard(16, 16, 32, rand));
+  bdroot.append(...generateBoard(16, 16, 64, rand));
+  bdroot.append(...generateBoard(10, 20, 25, rand));
+  bdroot.append(...generateBoard(10, 20, 50, rand));
   return bdroot;
 }
 function readSampleBoard(name) {
@@ -492,102 +493,19 @@ function flagUpdate(task) {
     case 'on': FLAG = 1; break;
     case 'off':
       FLAG = 0;
-      //toggleFlagCellEventListener('disable');
       break;
     case 'toggle':
       FLAG = !FLAG;
       if (FLAG) {
-        toggleFlagCellEventListener('enable');
+        foreachUntouchCells('addFlagEventListener');
       } else {
-        foreachUntouchCells('removeEvents');
-        //toggleFlagCellEventListener('disable');
+        foreachUntouchCells('removeAllEvents');
+        // refresh needed because node pointer changed by removing events using cloneNode()
+        foreachUntouchCells('refreshAddEventListener');
       }
       break;
   }
   printStatus();
-}
-function toggleFlagCellEventListener(task) {
-  const board = document.getElementById('myboard');
-  const cellElemLists = board.getElementsByTagName('td');
-  const cellElemArray = [...cellElemLists];
-  // foreach table cell
-  for (let i=0; i < cellElemArray.length; i++) {
-    const cell = new cellElem(i, cellElemArray);
-    if (cell.isFlag()) {
-      let bindedHandler = startSelection.bind(cellElemArray[i], cellElemArray, i);
-      switch (task) {
-        case 'enable' :
-          // put event listener for flagged cells
-          cellElemArray[i].addEventListener('click', bindedHandler, {once: true});
-          break;
-        case 'disable' :
-          // doesn't work
-          cellElemArray[i].removeEventListener('click', bindedHandler);
-          break;
-      }
-    }
-  }
-}
-function toggleFlagCellEventListener3(task) {
-  const board = document.getElementById('myboard');
-  const cellElemLists = board.getElementsByTagName('td');
-  const cellElemArray = [...cellElemLists];
-  // foreach table cell
-  for (let i=0; i < cellElemArray.length; i++) {
-    const cell = new cellElem(i, cellElemArray);
-    if (cell.isFlag()) {
-      switch (task) {
-        case 'enable' :
-          // put event listener for flagged cells
-          cellElemArray[i].addEventListener('click', function(){
-            const tableIndex = cellElemArray.indexOf(this);
-            const cell = new cellElem(tableIndex, cellElemArray);
-            cell.access('primary');
-          }, {once: true});
-          break;
-        case 'disable' :
-          console.log('class name0', i, cell.node.className);
-          // remove event listener from flagged cells
-          // to remove event, clone previous node and replace with it
-          const clonedCell = cellElemArray[i].cloneNode(true);
-          cellElemArray[i].replaceWith(clonedCell);
-          console.log('class name1', i, cell.node.className);
-          break;
-      }
-    }
-  }
-}
-function toggleFlagCellEventListener2() {
-  const board = document.getElementById('myboard');
-  const cellElemLists = board.getElementsByTagName('td');
-  const cellElemArray = [...cellElemLists];
-  // foreach table cell
-  for (let i=0; i < cellElemArray.length; i++) {
-    const cell = new cellElem(i, cellElemArray);
-    if (cell.isFlag()) {
-      if (FLAG) {
-        // put event listener for flagged cells
-        //cellElemArray[i].addEventListener('click', function(event) {
-       //  startSelection(cellElemArray, i);
-        //}, {once: true});
-        cellElemArray[i].addEventListener('click', function(){
-          const tableIndex = cellElemArray.indexOf(this);
-          const cell = new cellElem(tableIndex, cellElemArray);
-          console.log('check array 13 before cell.access(529)', tableIndex, cellElemArray[13]);
-          console.log('check array 14 before cell.access(529)', tableIndex, cellElemArray[14]);
-          console.log('check array 15 before cell.access(529)', tableIndex, cellElemArray[15]);
-          cell.access('primary');
-        }, {once: true});
-      } else {
-        console.log('class name0', i, cell.node.className);
-        // remove event listener from flagged cells
-        // to remove event, clone previous node and replace with it
-        const clonedCell = cellElemLists[i].cloneNode(true);
-        cellElemLists[i].replaceWith(clonedCell);
-        console.log('class name1', i, cell.node.className);
-      }
-    }
-  }
 }
 function startSelection(cellElemArray, index, event) {
   console.log('binded args', index, cellElemArray.length);
@@ -605,17 +523,11 @@ function addCellEventListener() {
     const cell = new cellElem(i, cellElemArray);
     // reset touch class from each cell
     cell.init();
-    //untouchCell(i, cellElemArray);
-    // put click event on each cell
-    // cellElemLists[i].addEventListener('click', function(){
     cellElemArray[i].addEventListener('click', function(){
       // const cellElemArray = [...cellElemLists];
       // get click position. upper left is 0 and start from 0,1,2,..IDX_MAX
       const tableIndex = cellElemArray.indexOf(this);
       const cell = new cellElem(tableIndex, cellElemArray);
-      for (let j=0; j < cellElemArray.length; j++) {
-        console.log('check array', j,'before cell.access(570)', tableIndex, cellElemArray[j]);
-      }
       cell.access('primary');
     }, {once: true});
   }
@@ -675,8 +587,6 @@ function foreachUntouchCells(task) {
   const cellElemArray = [...cellElemLists];
   let counter = 0;
   let alives = [];
-  console.log('check array 15-3', cellElemArray[15]);
-  console.log('check array 15-4', cellElemLists[15]);
   for (let i=0; i < cellElemArray.length; i++) {
     const cell = new cellElem(i, cellElemArray);
     //console.log('change visibility', i);
@@ -703,20 +613,54 @@ function foreachUntouchCells(task) {
             alives.push(i);
           }
           break;
-        case 'removeEvents':
+        case 'removeEventListener':
+          // doesn't work
+          if (cell.isFlag()) {
+            const bindedHandler = startSelection.bind(cellElemArray[i], cellElemArray, i);
+            cellElemArray[i].removeEventListener('click', bindedHandler);
+          }
+          break;
+        case 'removeFlagEvents':
           if (cell.isFlag()) {
             const clonedCell = cellElemArray[i].cloneNode(true);
             cellElemArray[i].replaceWith(clonedCell);
           }
           break;
+        case 'removeAllEvents':
+          const clonedCell = cellElemArray[i].cloneNode(true);
+          cellElemArray[i].replaceWith(clonedCell);
+          break;
+        case 'addFlagEventListener':
+          if (cell.isFlag()) {
+            const bindedHandler = startSelection.bind(cellElemArray[i], cellElemArray, i);
+            // put event listener for flagged cells
+            cellElemArray[i].addEventListener('click', bindedHandler, {once: true});
+          }
+          break;
+        case 'refreshAddEventListener':
+          if (!cell.isFlag()) {
+            const bindedHandler = startSelection.bind(cellElemArray[i], cellElemArray, i);
+            // put event listener for flagged cells
+            cellElemArray[i].addEventListener('click', bindedHandler, {once: true});
+          }
+          break;
+        case 'addFlagEventListenerByNonameFunction':
+          if (!cell.isFlag()) {
+            cellElemArray[i].addEventListener('click', function(){
+              const tableIndex = cellElemArray.indexOf(this);
+              const cell = new cellElem(tableIndex, cellElemArray);
+              cell.access('primary');
+            }, {once: true});
+          }
+          break;
       }
     }
-    //console.log('class name (foreach)', i, cell.node.className);
+    //console.log('class name (foreach)', task, i, cell.node.className);
   }
   switch (task) {
     case 'toggleVisibility': VISIBILITY = !VISIBILITY; break;
     case 'countAlive':
-      console.log('alives', alives);
+      //console.log('alives', alives);
       return counter;
       break;
   }

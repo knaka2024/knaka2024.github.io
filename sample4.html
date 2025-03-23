@@ -4,22 +4,39 @@
     <meta charset="utf-8" />
     <title>File Input Test</title>
     <style>
-      html {
-        font-size: 62.5%;
-        /*16px * 62.5% = 10px*/
+      @media screen and (min-width: 721px) {
+        html {
+          font-size: 75%;
+        }
       }
-      .left {
+      @media screen and (max-width: 720px) {
+        html {
+          font-size: 62.5%;
+          /*16px * 62.5% = 10px*/
+        }}
+      .floatleft {
         float: left;
       }
-      .right {
+      .floatright {
         float: right;
+      }
+      .right {
+        text-align: right;
       }
       .hdiv {
         display: table;
+        /*flex-grow: 0;*/
       }
       .vdiv {
         display: flex;
         flex-flow: column;
+        /*flex-grow: 0;*/
+      }
+      .inlinebox {
+        display: inline-block;
+        vertical-align: top;
+        margin-top: 1rem;
+        margin-left: 1rem;        
       }
       .box {
         font-size: 1.6rem;
@@ -31,10 +48,12 @@
       }
       .scrollbox {
         width: 10rem;
-        height: 20rem;
+        height: 15rem;
         font-size: 1.2rem;
         border: 1px solid #000;
         overflow-y: scroll;
+        margin-top: 0rem;
+        margin-left: 0rem;
       }
       .consolebox {
         width: 30rem;
@@ -42,19 +61,17 @@
         font-size: 1.2rem;
         border: 1px solid #000;
         overflow-y: scroll;
+        vertical-align: middle;
       }
       table.msboard {
-        display: inline-block;
-        vertical-align: top;
-        margin-top: 1rem;
-        margin-left: 1rem;
-        /*
-        position: absolute;
-        */
+        margin-top: 2rem;
+      }
+      .smallbox {
+        font-size: 1.2rem;
       }
       td.init {
-        width: 2rem;
-        height: 2rem;
+        width: 3rem;
+        height: 3rem;
         text-align: center;
         font-size: 1.2rem;
         cursor: pointer;
@@ -76,14 +93,15 @@
         background: url(flag.png);
         background-size: cover;
         color: transparent;
+        font-weight: bold;
       }
       td.safe {
-        background-color: #eee;
+        background-color: #bfb;
         color: #000;
       }
       td.penalty {
-        background-color: #eee;
-        color: #f00;
+        background-color: #fbb;
+        color: #000;
       }
       table.msboard td:hover {
         background-color: #eee;
@@ -112,26 +130,37 @@
         <select name="board" id="myselect" class="box"></select>
         <button type="button" id="mybtn" class="box">選択</button>
       </div>
-      <textarea id="myconsole" class="box consolebox" placeholder="console log"></textarea>
+      <div class="hdiv">
+        <label class="box">コンソール：</label>
+        <textarea id="myconsole" class="box consolebox" placeholder="console log"></textarea>
+      </div>
       <div class="hdiv">
         <label class="box">ボード初期化：</label>
         <button id="myreset" type="reset" class="box">リセット</button>
         <label class="box">盤面データ表示切替：</label>
-        <button type="button" id="mytoggle" class="box" onclick="foreachUntouchCells('toggleVisibility');">表示トグル</button>
+        <button type="button" id="mytoggle" class="box" onclick="foreachUntouchCells('toggleVisibility');">ON/OFF</button>
       </div>
       <label class="box">盤面のセル (X,Y) は横方向 X、縦方向 Y、左上が (0,0) となります</label>
       <form id="myform">
         <div class="hdiv">
           <label class="box">旗を立てる：</label>
-          <button type="button" id="myflag" class="box" onclick="flagUpdate('toggle');">旗トグル</button>
+          <button type="button" id="myflag" class="box" onclick="flagUpdate('toggle');">ON/OFF</button>
           <output id="mystatus" class="box">off</output>
           <label class="box">残りセル数：</label>
           <output id="myremain" class="box">remaining cells...</output>
         </div>
         <div class="hdiv">
-          <textarea id="mydialog" class="box scrollbox" placeholder="touch cell (x,y)"></textarea>
-          <table id="myboard" class="msboard"></table>
-          <textarea id="myscore" class="box scrollbox" placeholder="score count"></textarea>
+          <table class="inlinebox">
+            <tr><td class="smallbox">セル選択ログ</td></tr>
+            <tr><td>
+            <textarea id="mydialog" class="box scrollbox" placeholder="touch cell (x,y)"></textarea>
+            </td></tr>
+            <tr><td class="smallbox">スコア計算ログ</td></tr>
+            <tr><td>
+            <textarea id="myscore" class="box scrollbox" placeholder="score count"></textarea>
+            </td></tr>
+          </table>
+            <table id="myboard" class="msboard inlinebox"></table>
         </div>
         <div class="hdiv">
           <label class="box">セル選択終了：</label>
@@ -140,6 +169,7 @@
           <output id="myresult" class="box">result...</output>
         </div>
       </form>
+      <div class="right smallbox">version 2025/3/23</div>
     </div>
     <script>
       createBoardSelector();
