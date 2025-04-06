@@ -603,15 +603,8 @@ function addResetEventListener() {
     //console.log('resetting');
   });
 }
-function addDownloadEventListener() {
-  const dlBtn = document.getElementById('mydownload2');
-  dlBtn.addEventListener('click', function(){
-    const blob = new Blob(['sample'], {type:'text/plain'});
-    dlBtn.href = URL.createObjectURL(blob);
-  });
-}
 // cell selection log download
-function addDownloadEventListener2() {
+function addDownloadEventListener() {
   const dlBtn = document.getElementById('mydownload');
   dlBtn.addEventListener('click', function(){
     const data = fetchDialogMsg();
@@ -625,7 +618,7 @@ function addDownloadEventListener2() {
     dllink.href = URL.createObjectURL(blob);
     dllink.click();
     //console.log('download', dllink);
-    URL.revokeObjectURL(dllink.href);
+    //URL.revokeObjectURL(dllink.href);
     const statusBox = document.getElementById('mydownloadstatus');
     statusBox.value = fname;
   });
