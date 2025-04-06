@@ -603,8 +603,17 @@ function addResetEventListener() {
     //console.log('resetting');
   });
 }
-// cell selection log download
 function addDownloadEventListener() {
+  const dlBtn = document.getElementById('mydownload2');
+  dlBtn.addEventListener('click', function(){
+    const blob = new Blob(['sample'], {type:'text/plain'});
+    dlBtn.href = URL.createObjectURL(blob);
+    //console.log('download', dllink);
+    URL.revokeObjectURL(dllink.href);
+  });
+}
+// cell selection log download
+function addDownloadEventListener2() {
   const dlBtn = document.getElementById('mydownload');
   dlBtn.addEventListener('click', function(){
     const data = fetchDialogMsg();
