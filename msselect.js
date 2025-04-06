@@ -621,7 +621,7 @@ function addDownloadEventListener() {
     //URL.revokeObjectURL(dllink.href);
     setTimeout(() => {
 		  URL.revokeObjectURL(dllink.href)
-	    }, 5000)
+	    }, 1)
     const statusBox = document.getElementById('mydownloadstatus');
     statusBox.value = fname;
   });
