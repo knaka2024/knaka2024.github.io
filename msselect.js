@@ -109,14 +109,14 @@ function appendScrollBox(box, msg) {
 function printConsole(msg) {
   const consoleBox = document.getElementById('myconsole');
   //scroll before print
-  msg += "\n";
+  msg += '\n';
   appendScrollBox(consoleBox, msg);
 }
 // print to dialog box in html
 function printDialog(msg) {
   const dialogBox = document.getElementById('mydialog');
   //scroll before print
-  msg += "\n";
+  msg += '\n';
   appendScrollBox(dialogBox, msg);
 }
 // print to dialog box in html
@@ -130,7 +130,7 @@ function printScore(cell, incr, type) {
       msg += ` (${x},${y})`;
     }
     //scroll before print
-    msg += "\n";
+    msg += '\n';
     appendScrollBox(scoreBox, msg); 
   }
 }
@@ -306,8 +306,10 @@ class Board {
     //console.log('appended data', data);
   }
   push(boardData) {
-    this.nameList.push(boardData.name);
-    this.dataList.push(boardData.data);
+    if (boardData !== undefined) {
+      this.nameList.push(boardData.name);
+      this.dataList.push(boardData.data);
+    }
   }
   fetch(name) {
     const idx = this.nameList.indexOf(name);
@@ -318,6 +320,10 @@ class Board {
     while (newbd.nameList.length >0) {
       this.append(newbd.nameList.shift(),newbd.dataList.shift());
     }
+  }
+  last_name() {
+    const bdName = this.nameList.slice(-1).shift();
+    return bdName;
   }
   check_lines(lines) {
     for (let i = 0; i < this.size_y; i++) {
@@ -332,8 +338,14 @@ class Board {
     }
     if (lines.length != this.size_y) {
       printConsole(`#ER y-size ${lines.length} not match ${this.size_y}`);
-      console.log('lines is', lines);
+      //console.log('lines is', lines);
     }
+  }
+  get_data(name) {
+    const data = this.fetch(name);
+    const bdfile = new boardFile(data.join('\n'));
+    const boardData=bdfile.popData();
+    return boardData.data;
   }
   get_lines(name) {
     const data = this.fetch(name);
@@ -385,38 +397,65 @@ function removeEmptyItems(array) {
 
 function createSampleBoardSet() {
   const bdroot = new Board();
-  const rand = new randomparam();
+  //const rand = new randomparam();
+  const rand = BOARD_RAND;
   //bdroot.append('board-1', ['3 3','111191111']);
   //bdroot.append('board-2', ['111111','191191','111111','111111','191191','111111']);
   //bdroot.append('board-3', ['10 10 board-10x10-3', '0001110000 0112911110 1292111921 1921112129 1110191011 0112221000 0193910000 0119211110 0011101910 0000001110']);
-  //bdroot.append(...generateBoard(4, 4, 3, rand));
-  bdroot.push(generateBoard(4, 4, 2, rand));
-  bdroot.push(generateBoard(4, 4, 4, rand));
-  bdroot.push(generateBoard(5, 5, 3, rand));
-  bdroot.push(generateBoard(5, 5, 6, rand));
-  bdroot.push(generateBoard(7, 7, 6, rand));
-  bdroot.push(generateBoard(7, 7, 12, rand));
-  bdroot.push(generateBoard(8, 8, 8, rand));
-  bdroot.push(generateBoard(8, 8, 16, rand));
-  bdroot.push(generateBoard(10, 10, 12, rand));
-  bdroot.push(generateBoard(10, 10, 25, rand));
-  bdroot.push(generateBoard(13, 13, 21, rand));
-  bdroot.push(generateBoard(13, 13, 42, rand));
-  bdroot.push(generateBoard(16, 16, 32, rand));
-  bdroot.push(generateBoard(16, 16, 64, rand));
-  bdroot.push(generateBoard(10, 20, 30, rand));
-  bdroot.push(generateBoard(10, 20, 40, rand));
-  bdroot.push(generateBoard(10, 20, 50, rand));
-  bdroot.push(generateBoard(10, 20, 60, rand));
-  bdroot.push(generateBoard(10, 20, 70, rand));
+  //bdroot.append(...generateBoardData(4, 4, 3, rand));
+  bdroot.push(generateBoardData(4, 4, 2, rand));
+  bdroot.push(generateBoardData(4, 4, 4, rand));
+  bdroot.push(generateBoardData(5, 5, 3, rand));
+  bdroot.push(generateBoardData(5, 5, 6, rand));
+  bdroot.push(generateBoardData(7, 7, 6, rand));
+  bdroot.push(generateBoardData(7, 7, 12, rand));
+  bdroot.push(generateBoardData(8, 8, 8, rand));
+  bdroot.push(generateBoardData(8, 8, 16, rand));
+  bdroot.push(generateBoardData(9, 9, 10, rand));
+  bdroot.push(generateBoardData(9, 9, 20, rand));
+  bdroot.push(generateBoardData(9, 12, 13, rand));
+  bdroot.push(generateBoardData(9, 12, 26, rand));
+  bdroot.push(generateBoardData(9, 15, 16, rand));
+  bdroot.push(generateBoardData(9, 15, 33, rand));
+  bdroot.push(generateBoardData(10, 10, 12, rand));
+  bdroot.push(generateBoardData(10, 10, 25, rand));
+  bdroot.push(generateBoardData(13, 13, 21, rand));
+  bdroot.push(generateBoardData(13, 13, 42, rand));
+  bdroot.push(generateBoardData(16, 16, 32, rand));
+  bdroot.push(generateBoardData(16, 16, 64, rand));
+  bdroot.push(generateBoardData(17, 17, 36, rand));
+  bdroot.push(generateBoardData(17, 17, 72, rand));
+  bdroot.push(generateBoardData(10, 20, 30, rand));
+  bdroot.push(generateBoardData(10, 20, 40, rand));
+  bdroot.push(generateBoardData(10, 20, 50, rand));
+  bdroot.push(generateBoardData(10, 20, 60, rand));
+  bdroot.push(generateBoardData(10, 20, 70, rand));
   return bdroot;
 }
-
+function updateSampleBoardSet() {
+  const bdroot = new Board();
+  const bdfile = new boardFile('','','');
+  const rand = BOARD_RAND;
+  // read all current BDROOT boards 
+  for (let bdn = 0; bdn < BDROOT.nameList.length; bdn++) {
+    const bdprop = bdfile.boardProperty(BDROOT.nameList[bdn]);
+    if (bdprop !== undefined) {
+      // skip unknown board name to be updated
+      bdroot.push(generateBoardData(bdprop.x, bdprop.y, bdprop.mines, rand));
+    }
+  }
+  return bdroot;
+}
 function createBoardSelector() {
-  BDROOT = createSampleBoardSet();
+  if (BDROOT.nameList.length > 0) {
+    BDROOT = updateSampleBoardSet();
+  } else {
+    BDROOT = createSampleBoardSet();
+  }
   const bdsel = document.getElementById('myselect');
   // delete previous options of selector
   const options = bdsel.options;
+  // remove all current selector contents
   while (options.length > 0) options.remove(0);
   for (let bdn = 0; bdn < BDROOT.nameList.length; bdn++) {
     let newopt = document.createElement('option');
@@ -469,6 +508,22 @@ class boardFile {
       fname.push(this.fnidx++);
     }
     return fname.join('_');;
+  }
+  boardProperty(bdname) {
+    // board_7x7_12_31
+    let propList = bdname.split(/[_x]/);
+    if (propList.length >= 5) {
+      const boardProp = {
+        name: propList.shift(),
+        x: propList.shift(),
+        y: propList.shift(),
+        mines: propList.shift(),
+        id: propList.shift()
+      }
+      return boardProp;
+    } else {
+      return undefined;
+    }
   }
   boardSize(cellData) {
     //console.log('cellData', cellData);
@@ -553,24 +608,31 @@ function fileChanged(input) {
   reader.readAsText(fileNode); // reading file
 }
 function readBoardFile(fileName) {
-    // 'this' is binded to reader
-    const bdroot = new Board();
-    const fileData = this.result;
-    const bdfile = new boardFile(fileData, fileName);
-    while (bdfile.lines.length > 0) {
-      let boardData=bdfile.popData();
-      printConsole(`found ${boardData.name}`);
-      bdroot.push(boardData);
-    }
-    if (bdroot.nameList.length > 0) {
-      let bdName = bdroot.nameList.slice(-1).shift();
-      bdroot.load(bdName);
-      appendBoardSelector(bdroot);
-    }
+  // 'this' is binded to reader
+  const bdroot = new Board();
+  const fileData = this.result;
+  const bdfile = new boardFile(fileData, fileName);
+  // board file may have many boards
+  let boardFound = false;
+  while (bdfile.lines.length > 0) {
+    let boardData=bdfile.popData();
+    printConsole(`found ${boardData.name}`);
+    bdroot.push(boardData);
+    boardFound = true;
+  }
+  // choose the last board described in given board file
+  if (boardFound) {
+    loadLastBoardandMergeRoot(bdroot);
+  }
+}
+function loadLastBoardandMergeRoot(bdroot) {
+  if (bdroot.nameList.length > 0) {
+    const bdName = bdroot.last_name();
+    bdroot.load(bdName);
+    appendBoardSelector(bdroot);
     // merge new boards to BDROOT
     BDROOT.merge(bdroot);
-    //bdroot.append(fileName, this.result);
-    //bdroot.load(fileName);
+  }
 }
 function addFileLoadEventListener(reader, fileName) {
   //console.log('addFileLoadEventListener', fileName, reader);
@@ -578,15 +640,47 @@ function addFileLoadEventListener(reader, fileName) {
   const bindedHandler = readBoardFile.bind(reader, fileName);
   reader.addEventListener('load', bindedHandler);
 }
+function createCustomBoard() {
+  const bdroot = new Board();
+  const rand = BOARD_RAND;
+  const cstmx = document.getElementById('mycstmx');
+  const cstmy = document.getElementById('mycstmy');
+  const cstmm = document.getElementById('mycstmmines');
+  if ((cstmx.value != '') && (cstmy.value != '') && (cstmm.value != '')) {
+    console.log('x', cstmx.value, 'y', cstmy.value, 'm', cstmm.value);
+    bdroot.push(generateBoardData(cstmx.value, cstmy.value, cstmm.value, rand));
+    const bdName = bdroot.last_name();
+    printConsole(`create ${bdName}`);
+    // choose the last board described in given board file
+    loadLastBoardandMergeRoot(bdroot);
+  }
+}
 function addSelectEventListener() {
-  const button = document.getElementById('mybtn');
   const bdsel = document.getElementById('myselect');
-  button.addEventListener('click', function(){
-    // const bdidx = bdsel.selectedIndex;
+  const loadbtn = document.getElementById('myselectload');
+  const configbtn = document.getElementById('myselectreconfig');
+  const cstmbtn = document.getElementById('mycstmload');
+  
+  // board selection from select tag
+  loadbtn.addEventListener('click', function(){
     const bdname = bdsel.value;
     // printConsole(`select ${bdname}`);
     BDROOT.load(bdname);
   });
+  // board selection from safe cell configuration
+  configbtn.addEventListener('click', function(){
+    createBoardSelector();
+  });
+  // board selection from custom size
+  cstmbtn.addEventListener('click', function(){
+    createCustomBoard();
+  });
+}
+function getBoardConfig() {
+  // CSS selector = #<id_name>
+  const bdconfig = document.querySelector('#mybdconfig').bdconfig.value;
+  //console.log('bdconfig', bdconfig);
+  return bdconfig;
 }
 function resetBoardForm() {
   const resetForm = document.getElementById('myform');
@@ -603,32 +697,70 @@ function addResetEventListener() {
     //console.log('resetting');
   });
 }
-// cell selection log download
-function addDownloadEventListener() {
-  const dlBtn = document.getElementById('mydownload');
-  dlBtn.addEventListener('click', function(){
-    const data = fetchDialogMsg();
-    const blob = new Blob([data], {type:'text/plain'});
+function downloadText(text, statusBox, fname) {
+  if (text == '') {
+    statusBox.value = 'empty';
+  } else {
+    const blob = new Blob([text], {type:'text/plain'});
     const dllink = document.createElement('a');
-    let fname = 'select_cell.txt';
-    if (!BOARD_NAME.match(/unknown/) && (BOARD_NAME !== undefined)) {
-      fname = fname.replace(/cell/, BOARD_NAME);
-    }
     dllink.download = fname;    
     dllink.href = URL.createObjectURL(blob);
     dllink.click();
-    //console.log('download', dllink);
-    //URL.revokeObjectURL(dllink.href);
+    // Android Chrome is error when empty log. time out avoids the error
     setTimeout(() => {
-		  URL.revokeObjectURL(dllink.href)
-	    }, 1)
-    const statusBox = document.getElementById('mydownloadstatus');
+	URL.revokeObjectURL(dllink.href)
+	}, 5000);
     statusBox.value = fname;
-  });
+  }
+}
+function findBoardName() {
+  return (!BOARD_NAME.match(/unknown/) && (BOARD_NAME !== undefined));
+}
+function fetchBoardData() {
+  const lines = (findBoardName()) ? BDROOT.get_data(BOARD_NAME) : ['<no_board_data>'];
+  return (lines.join('\n') + '\n');
 }
 function fetchDialogMsg() {
   const dialogBox = document.getElementById('mydialog');
-  return dialogBox.value;
+  const msg = (dialogBox.value == '') ? '<no_dialog_data>' : dialogBox.value;
+  return (msg + '\n');
+}
+function downloadBoard(statusBox, event) {
+  const text = fetchBoardData();
+  //console.log('text', text);
+  const bdname = (findBoardName()) ? BOARD_NAME : 'board';
+  const fname = `${bdname}.txt`
+  downloadText(text, statusBox, fname);
+}
+function downloadDialog(statusBox, event) {
+  const text = fetchDialogMsg();
+  //console.log('text', text);
+  const bdname = (findBoardName()) ? BOARD_NAME : 'cell';
+  const fname = `select_${bdname}.txt`
+  downloadText(text, statusBox, fname);
+}
+// cell selection log download
+function addDownloadEventListener() {
+  const dlBtn1 = document.getElementById('mydownloadbd');
+  const dlBtn2 = document.getElementById('mydownloadlog');
+  const statusBox1 = document.getElementById('mydownloadbdstatus');
+  const statusBox2 = document.getElementById('mydownloadlogstatus');
+  const bindedHandler1 = downloadBoard.bind(dlBtn1, statusBox1);
+  const bindedHandler2 = downloadDialog.bind(dlBtn2, statusBox2);
+  dlBtn1.addEventListener('click', bindedHandler1);
+  dlBtn2.addEventListener('click', bindedHandler2);
+}
+function addUploadEventListener() {
+  const ulBtn = document.getElementById('myupload');
+  const listInput = document.getElementById('mylist');
+  ulBtn.addEventListener('click', function(){
+    listInput.click();
+  });
+  listInput.addEventListener('change', function(){
+    const fileNode = this.files[0];
+   // const fileName = fileNode.name;
+    //console.log('Input list', fileNode);
+  });
 }
 function initializeBoard() {
   //reset score and visibility
@@ -681,7 +813,7 @@ function flagUpdate(task) {
   printStatus();
 }
 function startSelection(cellElemArray, index, event) {
-  console.log('binded args', index, cellElemArray.length);
+  //console.log('binded args', index, cellElemArray.length);
   const cell = new cellElem(index, cellElemArray);
   cell.access(['primary']);
 }
@@ -839,7 +971,7 @@ function foreachUntouchCells(task) {
   }
 }
 function finishSelection() {
-  console.log('finish score is', SCORE);
+  //console.log('finish score is', SCORE);
   foreachUntouchCells('countPenalty');
   foreachUntouchCells('closure');
   printResult(SCORE);
@@ -854,10 +986,17 @@ function addfinishEventListener() {
 
 class randomparam {
   constructor() {
+    /*
     this.a = 373;
     this.b = 1779;
     this.m = 52397;
     this.seed = [3456];
+    */
+    // these are prime number of YYYYMMDD
+    this.a = 20250101;
+    this.b = 20250413;
+    this.m = 20250809;
+    this.seed = [20251229];    
     this.bp = 0;
     this.value = this.seed[0];
     this.iterate = 0;
@@ -889,56 +1028,149 @@ class randomparam {
     return normalize;
   }
 }
+// check randomparam distribution
+// checkRandDist(100000, 10);
+function checkRandDist(loop, binSize) {
+  const LOOP_MAX = 1.0e+6;
+  const rand = BOARD_RAND;
+  let bin = [];
+  for (let i=0; i < binSize; i++) {
+    bin[i] = 0;
+  }
+  if (loop > LOOP_MAX) {
+    let choise = confirm(`loop ${loop} should be limited to ${LOOP_MAX} for browser performance`);
+    if (!choise) {
+      return false;
+    }
+  }
+  for (let i=0; i < loop; i++) {
+    const nomval = rand.next();
+    const slice = parseInt(nomval * binSize);
+    //console.log('nomval', nomval);
+    bin[slice]++;
+  }
+  for (let i=0; i < binSize; i++) {
+    console.log('%d %d %f', i, bin[i], parseInt(bin[i]/loop*100*100)/100);
+  }
+  return true;
+}
+function compNum(a,b) {return (a-b);}
 function createSafeCells(size_x, size_y, mcount) {
+  const BDCONFIG = getBoardConfig();
+  const USE_CENTER_SAFE_CELL = 1;
   const USE_ADJCELL_WIDTH_MIN = 6;
-  // MINES : UNTOUCH = 10 : 10
+  // MINES : UNTOUCH = 1 : 1
   const USE_SAFECELL_MINE_RATIO_MIN = 1.0;
-  // MINES : UNTOUCH = 10 : 25
+  // MINES : UNTOUCH = 1 : 2.5
   const USE_ADJCELL_MINE_RATIO_MIN = 2.5;
   const xmax = size_x-1;
   const ymax = size_y-1;
   const cellSize = size_x * size_y;
+  // SAFE_CELL + MINES + UNTOUCH = cellSize
+  // untouchCellMin1 is corner SAFE_CELL count max
+  // SAFE_CELL(max) = cellSize - MINES - UNTOUCH(=MINES * USE_SAFECELL_MINE_RATIO_MIN)
+  //                = cellSize - MINES * (1 + USE_SAFECELL_MINE_RATIO_MIN)
   const untouchCellMin1 = parseInt(mcount * USE_SAFECELL_MINE_RATIO_MIN);
+  // untouchCellMin2 is 3-side SAFE_CELL count max of corner SAFE_CELL
+  // SAFE_CELL(max) = cellSize - MINES - UNTOUCH(=MINES * USE_ADJCELL_MINE_RATIO_MIN)
+  //                = cellSize - MINES * (1 + USE_ADJCELL_MINE_RATIO_MIN)
   const untouchCellMin2 = parseInt(mcount * USE_ADJCELL_MINE_RATIO_MIN);
-  let untouchCellSize = cellSize - mcount;
+  const untouchCellSizeInitial = cellSize - mcount;
   let safeCell = [];
+  // threshold is untouch cell count lower limit
+  // when safe cell +1, untouch cell -1
   let threshold = {
     min: 0,
-    cur: untouchCellSize,
+    cur: untouchCellSizeInitial,
     test_and_push: function(x,y) {
       const index = size_x*y + x;
-      //console.log('untouchCellMin', this.min, 'untouchCellSize', this.cur, 'index', index);
+      //console.log('untouchCellMin', this.min, 'untouchCellSizeInitial', this.cur, 'index', index);
       if (this.cur > this.min) {
         if (safeCell.indexOf(index) < 0) {
+          // skip already existing safe cell
           safeCell.push(index);
           this.cur--;
         }
       }
     }
   }
+  let enableCornerSC = false;
+  let enableCenterSC = false;
+  switch (BDCONFIG) {
+    case 'auto':
+      enableCornerSC = (!USE_CENTER_SAFE_CELL || !(size_x % 2) || !(size_y % 2));
+      enableCenterSC = (USE_CENTER_SAFE_CELL && (size_x % 2) && (size_y % 2));
+      break;
+    case 'corner':
+      enableCornerSC = true;
+      enableCenterSC = false;
+      break;
+    case 'center':
+      enableCornerSC = false;
+      enableCenterSC = true;
+      break;
+    case 'both':
+      enableCornerSC = true;
+      enableCenterSC = true;
+      break;
+    case 'none':
+    default:
+      enableCornerSC = false;
+      enableCenterSC = false;
+      break;
+  }
+  // corner SAFE_CELL
   threshold.min = untouchCellMin1;
-  for (let y=0; y < size_y; y+=ymax) {
-    for (let x=0; x < size_x; x+=xmax) {
-      threshold.test_and_push(x, y);
+  if (enableCornerSC) {
+    for (let y=0; y < size_y; y+=ymax) {
+      for (let x=0; x < size_x; x+=xmax) {
+        threshold.test_and_push(x, y);
+      }
     }
   }
+  // 3-side SAFE_CELL of corner SAFE_CELL
   threshold.min = untouchCellMin2;
-  for (let y=0; y < size_y; y+=ymax) {
-    for (let x=0; x < size_x; x+=xmax) {
-      const x_idx = (size_x > USE_ADJCELL_WIDTH_MIN) ? pibotAdjacent(x, 0, xmax) : [x];
-      const y_idx = (size_y > USE_ADJCELL_WIDTH_MIN) ? pibotAdjacent(y, 0, ymax) : [y];
-      for (let i=0; i < x_idx.length; i++) {
-        for (let j=0; j < y_idx.length; j++) {
-          threshold.test_and_push(x_idx[i], y_idx[j]);
+  if (enableCornerSC) {
+    for (let y=0; y < size_y; y+=ymax) {
+      for (let x=0; x < size_x; x+=xmax) {
+        const x_idx = (size_x > USE_ADJCELL_WIDTH_MIN) ? pibotAdjacent(x, 0, xmax) : [x];
+        const y_idx = (size_y > USE_ADJCELL_WIDTH_MIN) ? pibotAdjacent(y, 0, ymax) : [y];
+        for (let i=0; i < x_idx.length; i++) {
+          for (let j=0; j < y_idx.length; j++) {
+            threshold.test_and_push(x_idx[i], y_idx[j]);
+          }
         }
       }
     }
   }
-  return safeCell;
+  // center SAFE CELL
+  if (enableCenterSC) {
+   threshold.min = untouchCellMin1;
+    for (let y=parseInt((size_y-0.1) / 2); y <= parseInt(size_y / 2); y++) {
+      for (let x=parseInt((size_x-0.1) / 2); x <= parseInt(size_x / 2); x++) {
+        threshold.test_and_push(x, y);
+      }
+    }
+    // 8-side SAFE_CELL of center SAFE_CELL
+    threshold.min = untouchCellMin2;
+    for (let y=parseInt((size_y-0.1) / 2); y <= parseInt(size_y / 2); y++) {
+      for (let x=parseInt((size_x-0.1) / 2); x <= parseInt(size_x / 2); x++) {
+        const x_idx = (size_x > USE_ADJCELL_WIDTH_MIN) ? pibotAdjacent(x, 0, xmax) : [];
+        const y_idx = (size_y > USE_ADJCELL_WIDTH_MIN) ? pibotAdjacent(y, 0, ymax) : [];
+        for (let i=0; i < x_idx.length; i++) {
+          for (let j=0; j < y_idx.length; j++) {
+            threshold.test_and_push(x_idx[i], y_idx[j]);
+          }
+        }
+      }
+    }
+  }
+  return safeCell.sort(compNum);
 }
 function createMines(rand, cellCount, minesCount, safeCell) {
   if (minesCount > cellCount) {
-    minesCount = cellCount;
+    // mines count is limited by cell count (-1)
+    minesCount = cellCount -1;
   }
   let mines = [];
   for (let i=0; i < minesCount; i++) {
@@ -969,9 +1201,13 @@ function createCellElemArray(cellSize, mines) {
 }
 // generate board. return 'boardName' 'dataList...'
 // distroy SIZE_X and SIZE_Y
-function generateBoard(size_x, size_y, minesCount, rand) {
+function generateBoardData(size_x, size_y, minesCount, rand) {
   // avoid mines to be put at 4-corner reagion
-  const USE_SAFE_ZONE = 1
+  const USE_SAFE_ZONE = 1;
+  const MIN_SIZE = 4;
+  if ((size_x < MIN_SIZE) || (size_y < MIN_SIZE)) {
+    return undefined;
+  }
   SIZE_X = size_x;
   SIZE_Y = size_y;
   // skip the first rand to generate rand.iterate
@@ -979,7 +1215,7 @@ function generateBoard(size_x, size_y, minesCount, rand) {
   const boardId = rand.iterate;
   const cellSize = size_x * size_y;
   const safeCell = USE_SAFE_ZONE ? createSafeCells(size_x, size_y, minesCount) : [];
-  //console.log('safeCell', safeCell);
+  //console.log('safeCell', `${size_x}x${size_y}_${minesCount}`, getBoardConfig(), safeCell);
   const mines = createMines(rand, cellSize, minesCount, safeCell);
   //console.log('mines', mines);
   const cellElemArray = createCellElemArray(cellSize, mines);
