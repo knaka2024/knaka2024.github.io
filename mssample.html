@@ -193,9 +193,12 @@
           <button type="button" id="myupload" class="box">upload</button>
           <input type="file" id="mylist" class="hidden-input"/>
         </div>
-        <form><hr></form>
-        <label class="smallbox">※ 盤面のセル (X,Y) は横方向 X、縦方向 Y、左上が (0,0) となります</label>
-        <label class="smallbox">※ 盤面サイズや空セルの割合により、安全セルが設定されない場合があります</label>
+        <div class="hdiv">
+          <label class="smallbox">※ 盤面のセル (X,Y) は横方向 X、縦方向 Y、左上が (0,0) となります</label>
+        </div>
+        <div class="hdiv">
+          <label class="smallbox">※ 盤面サイズや空セルの割合により、安全セルが設定されない場合があります</label>
+        </div>
         <div class="hdiv">
           <table class="inlinebox">
             <tr><td class="smallbox">セル選択ログ</td></tr>
@@ -228,7 +231,7 @@
         </div>        
         <hr>
       </form>
-      <div class="right smallbox">version 2025/4/6</div>
+      <div class="right smallbox">version 2025/4/13</div>
     </div>
     <script>
       createBoardSelector();

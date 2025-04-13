@@ -302,13 +302,21 @@ class Board {
   append(name, data) {
     this.nameList.push(name);
     this.dataList.push(data);
-    //console.log('appended name', name);
-    //console.log('appended data', data);
+  }
+  append_head(name, data) {
+    this.nameList.unshift(name);
+    this.dataList.unshift(data);
   }
   push(boardData) {
     if (boardData !== undefined) {
       this.nameList.push(boardData.name);
       this.dataList.push(boardData.data);
+    }
+  }
+  unshift(boardData) {
+    if (boardData !== undefined) {
+      this.nameList.unshift(boardData.name);
+      this.dataList.unshift(boardData.data);
     }
   }
   fetch(name) {
@@ -321,8 +329,17 @@ class Board {
       this.append(newbd.nameList.shift(),newbd.dataList.shift());
     }
   }
+  merge_head(newbd) {
+    while (newbd.nameList.length >0) {
+      this.append_head(newbd.nameList.shift(),newbd.dataList.shift());
+    }
+  }
   last_name() {
     const bdName = this.nameList.slice(-1).shift();
+    return bdName;
+  }
+  first_name() {
+    const bdName = this.nameList[0];
     return bdName;
   }
   check_lines(lines) {
@@ -399,10 +416,6 @@ function createSampleBoardSet() {
   const bdroot = new Board();
   //const rand = new randomparam();
   const rand = BOARD_RAND;
-  //bdroot.append('board-1', ['3 3','111191111']);
-  //bdroot.append('board-2', ['111111','191191','111111','111111','191191','111111']);
-  //bdroot.append('board-3', ['10 10 board-10x10-3', '0001110000 0112911110 1292111921 1921112129 1110191011 0112221000 0193910000 0119211110 0011101910 0000001110']);
-  //bdroot.append(...generateBoardData(4, 4, 3, rand));
   bdroot.push(generateBoardData(4, 4, 2, rand));
   bdroot.push(generateBoardData(4, 4, 4, rand));
   bdroot.push(generateBoardData(5, 5, 3, rand));
@@ -438,13 +451,41 @@ function updateSampleBoardSet() {
   const rand = BOARD_RAND;
   // read all current BDROOT boards 
   for (let bdn = 0; bdn < BDROOT.nameList.length; bdn++) {
-    const bdprop = bdfile.boardProperty(BDROOT.nameList[bdn]);
-    if (bdprop !== undefined) {
+    const bdname = BDROOT.nameList[bdn];
+    //console.log('current bdn', bdn, bdname);
+    const bdprop = bdfile.boardProperty(bdname);
+    if (bdprop === undefined) {
+      printConsole(`skip ${bdname}`);
+    } else {
       // skip unknown board name to be updated
-      bdroot.push(generateBoardData(bdprop.x, bdprop.y, bdprop.mines, rand));
+      const boardData = generateBoardData(bdprop.x, bdprop.y, bdprop.mines, rand);
+      if (boardData === undefined) {
+        printConsole(`skip ${bdname}`);
+      } else {
+        bdroot.push(boardData);
+      }
     }
   }
   return bdroot;
+}
+class BoardSelector {
+  constructor() {
+    this.body = document.getElementById('myselect');
+  }
+  clean() {
+    const options = this.body.options;
+    // remove all current selector contents
+    while (options.length > 0) options.remove(0);
+    return this;
+  }
+  import(bdroot) {
+    for (let bdn = 0; bdn < bdroot.nameList.length; bdn++) {
+      let newopt = document.createElement('option');
+      newopt.innerHTML = bdroot.nameList[bdn];
+      this.body.appendChild(newopt);
+    }
+    return this;
+  }
 }
 function createBoardSelector() {
   if (BDROOT.nameList.length > 0) {
@@ -452,31 +493,11 @@ function createBoardSelector() {
   } else {
     BDROOT = createSampleBoardSet();
   }
-  const bdsel = document.getElementById('myselect');
-  // delete previous options of selector
-  const options = bdsel.options;
-  // remove all current selector contents
-  while (options.length > 0) options.remove(0);
-  for (let bdn = 0; bdn < BDROOT.nameList.length; bdn++) {
-    let newopt = document.createElement('option');
-    newopt.innerHTML = BDROOT.nameList[bdn];
-    bdsel.appendChild(newopt);
-  }
-  /*
-  for (let opt = 0; opt < options.length; opt++) {
-    console.log('bdsel opt', opt, options[opt].value);
-  }
-  */
+  updateBoardSelector();
 }
-
-function appendBoardSelector(bdroot) {
-  const bdsel = document.getElementById('myselect');
-  // append selector
-  for (let bdn = 0; bdn < bdroot.nameList.length; bdn++) {
-    let newopt = document.createElement('option');
-    newopt.innerHTML = bdroot.nameList[bdn];
-    bdsel.appendChild(newopt);
-  }
+function updateBoardSelector() {
+  const bdsel = new BoardSelector();
+  bdsel.clean().import(BDROOT);
 }
 class boardFile {
   constructor(fileData, fileName, boardId) {
@@ -620,18 +641,27 @@ function readBoardFile(fileName) {
     bdroot.push(boardData);
     boardFound = true;
   }
-  // choose the last board described in given board file
+  // choose the first board described in given board file
   if (boardFound) {
-    loadLastBoardandMergeRoot(bdroot);
+    loadfirstBoardandMergeRoot(bdroot);
   }
 }
 function loadLastBoardandMergeRoot(bdroot) {
   if (bdroot.nameList.length > 0) {
     const bdName = bdroot.last_name();
     bdroot.load(bdName);
-    appendBoardSelector(bdroot);
     // merge new boards to BDROOT
     BDROOT.merge(bdroot);
+    updateBoardSelector();
+  }
+}
+function loadfirstBoardandMergeRoot(bdroot) {
+  if (bdroot.nameList.length > 0) {
+    const bdName = bdroot.first_name();
+    bdroot.load(bdName);
+    // merge new boards to BDROOT
+    BDROOT.merge_head(bdroot);
+    updateBoardSelector();
   }
 }
 function addFileLoadEventListener(reader, fileName) {
@@ -647,12 +677,12 @@ function createCustomBoard() {
   const cstmy = document.getElementById('mycstmy');
   const cstmm = document.getElementById('mycstmmines');
   if ((cstmx.value != '') && (cstmy.value != '') && (cstmm.value != '')) {
-    console.log('x', cstmx.value, 'y', cstmy.value, 'm', cstmm.value);
-    bdroot.push(generateBoardData(cstmx.value, cstmy.value, cstmm.value, rand));
-    const bdName = bdroot.last_name();
+    //console.log('x', cstmx.value, 'y', cstmy.value, 'm', cstmm.value);
+    bdroot.unshift(generateBoardData(cstmx.value, cstmy.value, cstmm.value, rand));
+    const bdName = bdroot.first_name();
     printConsole(`create ${bdName}`);
-    // choose the last board described in given board file
-    loadLastBoardandMergeRoot(bdroot);
+    // choose the first board described in given board file
+    loadfirstBoardandMergeRoot(bdroot);
   }
 }
 function addSelectEventListener() {
@@ -669,7 +699,12 @@ function addSelectEventListener() {
   });
   // board selection from safe cell configuration
   configbtn.addEventListener('click', function(){
+    printConsole('update board selector');
     createBoardSelector();
+    if (BDROOT.nameList.length > 0) {
+      const bdName = BDROOT.first_name();
+      BDROOT.load(bdName);
+    }
   });
   // board selection from custom size
   cstmbtn.addEventListener('click', function(){
@@ -1055,6 +1090,146 @@ function checkRandDist(loop, binSize) {
   return true;
 }
 function compNum(a,b) {return (a-b);}
+class safeZone {
+  constructor(size_x, size_y, mcount) {
+    this.cells = [];
+    this.prop = {
+      size: size_x * size_y,
+      xs: size_x,
+      ys: size_y,
+      xmax: size_x-1,
+      ymax: size_y-1
+    }
+    this.enable = {corner: false, center: false}
+    this.untouch = {min: 0, cur: this.prop.size - mcount}
+    this.locList = [];
+  }
+  test_and_push(loc) {
+    const index = this.prop.xs*loc.y + loc.x;
+    //console.log('untouchCellMin', this.untouch.min, 'untouchCellSizeInitial', this.untouch.cur, 'index', index);
+    if (this.untouch.cur > this.untouch.min) {
+      // threshold is untouch cell count lower limit
+      // when safe cell +1, untouch cell -1
+      if (this.cells.indexOf(index) < 0) {
+        // skip already existing safe cell
+        this.cells.push(index);
+        this.untouch.cur--;
+      }
+    }
+  }
+  config() {
+    const BDCONFIG = getBoardConfig();
+    if (/auto/.test(BDCONFIG)) {
+        const oddBoard = ((this.prop.xs % 2) && (this.prop.ys % 2)) ? true : false;
+        this.enable = {corner: !oddBoard, center: oddBoard}
+    } else {
+      this.enable.corner = (/corner|both/.test(BDCONFIG)) ? true : false;
+      this.enable.center = (/center|both/.test(BDCONFIG)) ? true : false;
+    }
+  }
+  points_corner() {
+    this.locList = [];
+    if (this.enable.corner) {
+      for (let y=0; y < this.prop.ys; y+=this.prop.ymax) {
+        for (let x=0; x < this.prop.xs; x+=this.prop.xmax) {
+          const loc = {x:x, y:y}
+          this.locList.push(loc);
+        }
+      }
+    }
+    return this;
+  }
+  points_center() {
+    this.locList = [];
+    if (this.enable.center) {
+      for (let y=parseInt((this.prop.ys-0.1) / 2); y <= parseInt(this.prop.ys / 2); y++) {
+        for (let x=parseInt((this.prop.xs-0.1) / 2); x <= parseInt(this.prop.xs / 2); x++) {
+          const loc = {x:x, y:y}
+          this.locList.push(loc);
+        }
+      }
+    }
+    return this;
+  }
+  points_pivot(loc) {
+    this.locList = [];
+    const USE_ADJCELL_WIDTH_MIN = 6;
+    const x_idx = (this.prop.xs > USE_ADJCELL_WIDTH_MIN) ? pibotAdjacent(loc.x, 0, this.prop.xmax) : [loc.x];
+    const y_idx = (this.prop.ys > USE_ADJCELL_WIDTH_MIN) ? pibotAdjacent(loc.y, 0, this.prop.ymax) : [loc.y];
+    for (let i=0; i < x_idx.length; i++) {
+      for (let j=0; j < y_idx.length; j++) {
+        const loc = {x:x_idx[i], y:y_idx[j]}
+        this.locList.push(loc);
+      }
+    }
+    return this;
+  }
+  pivot_test_points() {
+    const origLocList = [...this.locList];
+    for (let i=0; i < origLocList.length; i++) {
+      this.points_pivot(origLocList[i]).test_points();
+    }
+    return this;
+  }
+  test_points() {
+    for (let i=0; i < this.locList.length; i++) {
+      this.test_and_push(this.locList[i]);
+    }
+    return this;
+  }
+}
+function createSafeCells(size_x, size_y, mcount) {
+  // MINES : UNTOUCH = 1 : 1
+  const USE_SAFECELL_MINE_RATIO_MIN = 1.0;
+  // MINES : UNTOUCH = 1 : 2.5
+  const USE_ADJCELL_MINE_RATIO_MIN = 2.5;
+  // SAFE_CELL + MINES + UNTOUCH = cellSize
+  // untouchCellMin1 is corner SAFE_CELL count max
+  // SAFE_CELL(max) = cellSize - MINES - UNTOUCH(=MINES * USE_SAFECELL_MINE_RATIO_MIN)
+  //                = cellSize - MINES * (1 + USE_SAFECELL_MINE_RATIO_MIN)
+  const untouchCellMin1 = parseInt(mcount * USE_SAFECELL_MINE_RATIO_MIN);
+  // untouchCellMin2 is 3-side SAFE_CELL count max of corner SAFE_CELL
+  // SAFE_CELL(max) = cellSize - MINES - UNTOUCH(=MINES * USE_ADJCELL_MINE_RATIO_MIN)
+  //                = cellSize - MINES * (1 + USE_ADJCELL_MINE_RATIO_MIN)
+  const untouchCellMin2 = parseInt(mcount * USE_ADJCELL_MINE_RATIO_MIN);
+  const sfz = new safeZone(size_x, size_y, mcount);
+  sfz.config();
+  //const locCorner = sfz.points_corner();
+  //const locCenter = sfz.points_center();
+  //console.log('locCorner', locCorner);
+  //console.log('locCenter', locCenter);
+
+  // corner SAFE_CELL
+  sfz.untouch.min = untouchCellMin1;
+  sfz.points_corner().test_points();
+  
+  // 3-side SAFE_CELL of corner SAFE_CELL
+  sfz.untouch.min = untouchCellMin2;
+  sfz.points_corner().pivot_test_points();
+  /*
+  for (let i=0; i < locCorner.length; i++) {
+    const locPvt = sfz.points_pivot(locCorner[i]);
+    sfz.test_points(locPvt);
+  }
+*/
+  // center SAFE CELL
+  // when enable, even size will use 2-center cells of each x and y
+  // when x is even, y is odd, use x is 2-center, y is 1-center
+  sfz.untouch.min = untouchCellMin1;
+  sfz.points_center().test_points();
+
+  // 8-side SAFE_CELL of center SAFE_CELL
+  sfz.untouch.min = untouchCellMin2;
+  sfz.points_center().pivot_test_points();
+  /*
+  for (let i=0; i < locCenter.length; i++) {
+    const locPvt = sfz.points_pivot(locCenter[i]);
+    sfz.test_points(locPvt);
+  }
+  */
+  return sfz.cells.sort(compNum);
+}
+/*
 function createSafeCells(size_x, size_y, mcount) {
   const BDCONFIG = getBoardConfig();
   const USE_CENTER_SAFE_CELL = 1;
@@ -1144,6 +1319,8 @@ function createSafeCells(size_x, size_y, mcount) {
     }
   }
   // center SAFE CELL
+  // when enable, even size will use 2-center cells of each x and y
+  // when x is even, y is odd, use x is 2-center, y is 1-center
   if (enableCenterSC) {
    threshold.min = untouchCellMin1;
     for (let y=parseInt((size_y-0.1) / 2); y <= parseInt(size_y / 2); y++) {
@@ -1167,6 +1344,7 @@ function createSafeCells(size_x, size_y, mcount) {
   }
   return safeCell.sort(compNum);
 }
+*/
 function createMines(rand, cellCount, minesCount, safeCell) {
   if (minesCount > cellCount) {
     // mines count is limited by cell count (-1)
@@ -1215,7 +1393,7 @@ function generateBoardData(size_x, size_y, minesCount, rand) {
   const boardId = rand.iterate;
   const cellSize = size_x * size_y;
   const safeCell = USE_SAFE_ZONE ? createSafeCells(size_x, size_y, minesCount) : [];
-  //console.log('safeCell', `${size_x}x${size_y}_${minesCount}`, getBoardConfig(), safeCell);
+  console.log('safeCell', `${size_x}x${size_y}_${minesCount}`, getBoardConfig(), safeCell);
   const mines = createMines(rand, cellSize, minesCount, safeCell);
   //console.log('mines', mines);
   const cellElemArray = createCellElemArray(cellSize, mines);
