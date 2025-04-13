@@ -664,7 +664,7 @@ function addSelectEventListener() {
   // board selection from select tag
   loadbtn.addEventListener('click', function(){
     const bdname = bdsel.value;
-    // printConsole(`select ${bdname}`);
+    printConsole(`select ${bdname}`);
     BDROOT.load(bdname);
   });
   // board selection from safe cell configuration
