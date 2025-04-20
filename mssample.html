@@ -24,6 +24,9 @@
       .floatright {
         float: right;
       }
+      .left {
+        text-align: left;
+      }
       .right {
         text-align: right;
       }
@@ -46,9 +49,11 @@
         font-size: 1.6rem;
         margin-top: 1rem;
         margin-left: 1rem;
-        /*
-        position: absolute;
-        */
+      }
+      .checkbox {
+        font-size: 1.6rem;
+        margin-top: 1rem;
+        margin-right: 1rem;
       }
       .numbox {
         width: 4rem;
@@ -79,7 +84,6 @@
       }
       .smallbox {
         font-size: 1.2rem;
-        margin-left: 1rem;
       }
       td.init {
         width: 3rem;
@@ -118,6 +122,13 @@
       table.msboard td:hover {
         background-color: #eee;
       }
+      table.mssummary {
+        border-collapse: collapse;
+      }
+      td.mssummary, th.mssummary {
+        border: solid 1px;
+        padding: 2px 10px; /* top-bottom left-right */
+      }
     </style>
     <script src="./msselect.js"></script>
     <script>
@@ -132,6 +143,7 @@
       let BOARD_RAND = new randomparam();
       let FLAG = 0;
       let BDROOT = new Board();
+      let SUMMARY = undefined;
       let MINES_VALUE = 9;
     </script>
   </head>
@@ -141,32 +153,40 @@
       <form><hr></form>
       <div class="hdiv">
         <label class="box">ボード選択（ファイルから）：</label>
-        <input type="file" id="myinput" class="box" onchange="fileChanged(this)"/>
+        <input type="file" id="myinput" class="checkbox" onchange="fileChanged(this, 'board')"/>
       </div>
       <div class="hdiv">
         <label class="box">ボード選択（サンプルから）：</label>
-        <select name="board" id="myselect" class="box"></select>
-        <button type="button" id="myselectload" class="box">select</button>
+        <select name="board" id="myselect" class="checkbox"></select>
+        <button type="button" id="myselectload" class="checkbox">select</button>
       </div>
       <div class="hdiv">
         <label class="box">ボード選択（カスタム）　　：</label>
-        <label class="smallbox">X size</label>
-        <input type="number" id="mycstmx" class="box numbox" min="4" placeholder="x"/>
-        <label class="smallbox">Y size</label>
-        <input type="number" id="mycstmy" class="box numbox" min="4" placeholder="y"/>
-        <label class="smallbox">mines</label>
-        <input type="number" id="mycstmmines" class="box numbox" min="0" placeholder="m"/>
-        <button type="button" id="mycstmload" class="box">new board</button>
+        <label class="checkbox smallbox">X size</label>
+        <input type="number" id="mycstmx" class="checkbox numbox" min="2" placeholder="x"/>
+        <label class="checkbox smallbox">Y size</label>
+        <input type="number" id="mycstmy" class="checkbox numbox" min="2" placeholder="y"/>
+        <label class="checkbox smallbox">mines</label>
+        <input type="number" id="mycstmmines" class="checkbox numbox" min="0" placeholder="m"/>
+        <button type="button" id="mycstmload" class="checkbox">new board</button>
       </div>
       <form id="mybdconfig">
         <div class="hdiv">
           <label class="box">安全セルの設定：</label>
-          <label class="box"><input type="radio" name="bdconfig" value="auto" checked/>auto</label>
-          <label class="box"><input type="radio" name="bdconfig" value="corner"/>corner</label>
-          <label class="box"><input type="radio" name="bdconfig" value="center"/>center</label>
-          <label class="box"><input type="radio" name="bdconfig" value="both"/>both</label>
-          <label class="box"><input type="radio" name="bdconfig" value="none"/>none</label>
-          <button type="button" id="myselectreconfig" class="box">update board</button>      
+          <label class="checkbox"><input type="radio" name="bdconfig" value="auto" checked/>auto</label>
+          <label class="checkbox"><input type="radio" name="bdconfig" value="corner"/>corner</label>
+          <label class="checkbox"><input type="radio" name="bdconfig" value="center"/>center</label>
+          <label class="checkbox"><input type="radio" name="bdconfig" value="both"/>both</label>
+          <label class="checkbox"><input type="radio" name="bdconfig" value="none"/>none</label>
+          <button type="button" id="myselectreconfig" class="checkbox">update sample</button>      
+        </div>
+        <div class="hdiv">
+          <label class="box">セル選択リスト：</label>
+          <button type="button" id="myupload" class="checkbox">upload list</button>
+          <input type="file" id="mylist" class="hidden-input"/>
+          <label class="box">読み込んだ後：</label>
+          <label class="checkbox"><input type="radio" name="readlist" value="finish" checked/>finish</label>
+          <label class="checkbox"><input type="radio" name="readlist" value="continue"/>continue</label>
         </div>
       </form>
       <div class="hdiv">
@@ -176,36 +196,32 @@
       <form><hr></form>
       <div class="hdiv">
         <label class="box">ボード初期化：</label>
-        <button id="myreset" type="reset" class="box">reset</button>
+        <button id="myreset" type="reset" class="checkbox">reset</button>
         <label class="box">盤面データ表示切替：</label>
-        <button type="button" id="mytoggle" class="box" onclick="foreachUntouchCells('toggleVisibility')">ON/OFF</button>
+        <button type="button" id="mytoggle" class="checkbox" onclick="foreachUntouchCells('toggleVisibility')">ON/OFF</button>
       </div>
       <form id="myform">
+        <!-- reset effective form region begin -->
         <div class="hdiv">
           <label class="box">旗を立てる：</label>
-          <button type="button" id="myflag" class="box" onclick="flagUpdate('toggle')">Flag ON/OFF</button>
-          <output id="mystatus" class="box">off</output>
+          <button type="button" id="myflag" class="checkbox" onclick="flagUpdate('toggle')">Flag ON/OFF</button>
+          <output id="mystatus" class="checkbox">off</output>
           <label class="box">残りセル数：</label>
-          <output id="myremain" class="box">remaining cells...</output>
+          <output id="myremain" class="checkbox">remaining cells...</output>
         </div>
         <div class="hdiv">
-          <label class="box">セル選択リスト：</label>
-          <button type="button" id="myupload" class="box">upload</button>
-          <input type="file" id="mylist" class="hidden-input"/>
+          <label class="box smallbox">※ 盤面のセル (X,Y) は横方向 X、縦方向 Y、左上が (0,0) となります</label>
         </div>
         <div class="hdiv">
-          <label class="smallbox">※ 盤面のセル (X,Y) は横方向 X、縦方向 Y、左上が (0,0) となります</label>
-        </div>
-        <div class="hdiv">
-          <label class="smallbox">※ 盤面サイズや空セルの割合により、安全セルが設定されない場合があります</label>
+          <label class="box smallbox">※ 盤面サイズや空セルの割合により、安全セルが設定されない場合があります</label>
         </div>
         <div class="hdiv">
           <table class="inlinebox">
-            <tr><td class="smallbox">セル選択ログ</td></tr>
+            <tr><td class="box smallbox">セル選択ログ</td></tr>
             <tr><td>
             <textarea id="mydialog" class="box scrollbox" placeholder="touch cell (x,y)" wrap="off"></textarea>
             </td></tr>
-            <tr><td class="smallbox">スコア計算ログ</td></tr>
+            <tr><td class="box smallbox">スコア計算ログ</td></tr>
             <tr><td>
             <textarea id="myscore" class="box scrollbox" placeholder="score count"></textarea>
             </td></tr>
@@ -214,24 +230,26 @@
         </div>
         <div class="hdiv">
           <label class="box">セル選択終了：</label>
-          <button type="button" id="myfinish" class="box">ここで採点</button>
+          <button type="button" id="myfinish" class="checkbox">ここで採点</button>
           <label class="box">スコア：</label>
-          <output id="myresult" class="box">result...</output>
+          <output id="myresult" class="checkbox">result...</output>
         </div>
         <hr>
         <div class="hdiv">
           <label class="box">盤面データ　：</label>
-          <button type="button" id="mydownloadbd" class="box">download</button>
-          <output id="mydownloadbdstatus" class="box">none</output>
+          <button type="button" id="mydownloadbd" class="checkbox">download board data</button>
+          <output id="mydownloadbdstatus" class="checkbox">none</output>
         </div>
         <div class="hdiv">
           <label class="box">セル選択ログ：</label>
-          <button type="button" id="mydownloadlog" class="box">download</button>
-          <output id="mydownloadlogstatus" class="box">none</output>
+          <button type="button" id="mydownloadlog" class="checkbox">download list</button>
+          <output id="mydownloadlogstatus" class="checkbox">none</output>
         </div>        
         <hr>
+        <!-- reset effective form region end -->
       </form>
-      <div class="right smallbox">version 2025/4/13</div>
+      <table id="mysummary" class="mssummary inlinebox box"></table>
+      <div class="right smallbox">version 2025/4/21</div>
     </div>
     <script>
       createBoardSelector();
