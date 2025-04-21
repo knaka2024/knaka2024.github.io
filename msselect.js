@@ -739,7 +739,7 @@ function readCellListFile(fileName) {
     if (BDROOT.idx(bdname) < 0) {
       const bdfile = new boardFile('','','');
       const bdprop = bdfile.boardProperty(bdname);
-      BDROOT.new_board(bdprop.x, bdprop.y, bdprop.mines).push_tail();
+      BDROOT.new_board(bdprop.x, bdprop.y, bdprop.mines, bdprop.id).push_tail();
       updateBoardSelector();
     }
     if (BDROOT.idx(bdname) >= 0) {
@@ -880,6 +880,21 @@ function fetchDialogMsg() {
   const msg = (dialogBox.value == '') ? '<no_dialog_data>' : dialogBox.value;
   return (msg + '\n');
 }
+function fetchSummary() {
+  const table = document.getElementById('mysummary');
+  const cells = table.querySelectorAll('td');
+  let msg = (cells.length == 0) ? '<no_summary_data>' : '';
+  for (let row of table.rows) {
+    let line = [];
+    for(let cell of row.cells){
+      console.log(cell.innerText);
+      line.push(cell.innerText);
+    }
+    msg += line.join(',');
+    msg += '\n';
+  }
+  return msg
+}
 function downloadBoard(statusBox, event) {
   const text = fetchBoardData();
   //console.log('text', text);
@@ -894,16 +909,26 @@ function downloadDialog(statusBox, event) {
   const fname = `select_${bdname}.txt`
   downloadText(text, statusBox, fname);
 }
+function downloadSummary(statusBox, event) {
+  const text = fetchSummary();
+  //console.log('text', text);
+  const fname = `score_summary.csv`
+  downloadText(text, statusBox, fname);
+}
 // cell selection log download
 function addDownloadEventListener() {
   const dlBtn1 = document.getElementById('mydownloadbd');
   const dlBtn2 = document.getElementById('mydownloadlog');
+  const dlBtn3 = document.getElementById('mydownloadsummary');
   const statusBox1 = document.getElementById('mydownloadbdstatus');
   const statusBox2 = document.getElementById('mydownloadlogstatus');
+  const statusBox3 = document.getElementById('mydownloadsummarystatus');
   const bindedHandler1 = downloadBoard.bind(dlBtn1, statusBox1);
   const bindedHandler2 = downloadDialog.bind(dlBtn2, statusBox2);
+  const bindedHandler3 = downloadSummary.bind(dlBtn3, statusBox3);
   dlBtn1.addEventListener('click', bindedHandler1);
   dlBtn2.addEventListener('click', bindedHandler2);
+  dlBtn3.addEventListener('click', bindedHandler3);
 }
 function addUploadEventListener() {
   const ulBtn = document.getElementById('myupload');

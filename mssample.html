@@ -30,6 +30,9 @@
       .right {
         text-align: right;
       }
+      .top {
+        vertical-align: top;
+      }
       .hdiv {
         display: table;
         /*flex-grow: 0;*/
@@ -44,6 +47,12 @@
         vertical-align: top;
         margin-top: 1rem;
         margin-left: 1rem;        
+      }
+      .summarybox {
+        display: inline-block;
+        vertical-align: top;
+        margin-left: 1rem;        
+        font-size: 1.6rem;
       }
       .box {
         font-size: 1.6rem;
@@ -245,10 +254,24 @@
           <button type="button" id="mydownloadlog" class="checkbox">download list</button>
           <output id="mydownloadlogstatus" class="checkbox">none</output>
         </div>        
+        <div class="hdiv">
+          <label class="box">スコア・サマリ：</label>
+          <button type="button" id="mydownloadsummary" class="checkbox">download score summary</button>
+          <output id="mydownloadsummarystatus" class="checkbox">none</output>
+        </div>        
         <hr>
         <!-- reset effective form region end -->
       </form>
-      <table id="mysummary" class="mssummary inlinebox box"></table>
+      <form>
+      <div class="hdiv">
+        <table class="summarybox">
+          <tr>
+            <td class="top">スコア・サマリ：</td>
+            <td><table id="mysummary" class="mssummary top"></table></td>
+          </tr>
+        </table>
+      </div>
+      </form>
       <div class="right smallbox">version 2025/4/21</div>
     </div>
     <script>
