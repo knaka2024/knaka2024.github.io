@@ -13,4 +13,4 @@ Hello
 
 [DAS2025-prog](https://dasadc.github.io/adc2025/msprog/mssample.html "こちらもテスト中")
 
-[プログラミング競技](programming.md "プログラミング競技")
+[プログラミング競技](programming.html "プログラミング競技")
