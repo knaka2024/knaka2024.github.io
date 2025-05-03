@@ -84,6 +84,58 @@
         overflow-y: scroll;
         vertical-align: middle;
       }
+      #mycoverall {
+        position: fixed;
+        width: 100vw;
+        height: 100vh;
+        /*
+        border: 1px solid #000;
+        */
+        top: 0;
+        left: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        vertical-align: middle;
+      }
+      #mycoverall.invisible {
+        display: none;
+      }
+      .circleball {
+        width: 80px;
+        height: 80px;
+        margin: 0px;
+        border-radius: 50%;
+        box-sizing: border-box;
+        border: 10px solid rgb(128 128 128 / 50%);
+        border-top-color: rgb(128 128 128 / 100%);
+        /* duration timing-function delay iteration-count ... keyframes-name */
+        animation: 1s linear 0s fadein,
+                   2s linear 1s infinite rotation;
+      }
+      .loadtext {
+        position: absolute;
+        opacity: 0;
+        animation: 2s linear 0.5s blink infinite;
+        /* duration timing-function delay iteration-count ... keyframes-name */
+        /*
+        animation: 0.1s linear 0s fadein,
+                   1s linear 0.1s infinite blink;
+        */
+      }
+      @keyframes rotation {
+        0% { transform: rotate(0); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 1; }
+      }
+      @keyframes fadein {
+        0% { opacity: 0; }
+        90% { opacity: 0; }
+        100% { opacity: 1; }
+      }
       hr {
         border: none;
         border-bottom: 1px #333 dotted;
@@ -150,13 +202,18 @@
       let BOARD_NAME = '<board_name_unknown>';
       let BOARD_HEADER = '<board_header_unknown>';
       let BOARD_RAND = new randomparam();
-      let FLAG = 0;
+      let FLAG_UPDATE = 0;
       let BDROOT = new Board();
       let SUMMARY = undefined;
       let MINES_VALUE = 9;
     </script>
   </head>
   <body>
+    <div id="mycoverall" class="invisible">
+      <div class="circleball"></div>
+      <div id="myloading" class="loadtext">loading...</div>
+    </div>
+    </div>
     <div class="vdiv">
       <form class="box">お試しマインスイーパー</form>
       <form><hr></form>
@@ -216,7 +273,7 @@
           <button type="button" id="myflag" class="checkbox" onclick="flagUpdate('toggle')">Flag ON/OFF</button>
           <output id="mystatus" class="checkbox">off</output>
           <label class="box">残りセル数：</label>
-          <output id="myremain" class="checkbox">remaining cells...</output>
+          <output id="myremains" class="checkbox">remaining cells...</output>
         </div>
         <div class="hdiv">
           <label class="box smallbox">※ 盤面のセル (X,Y) は横方向 X、縦方向 Y、左上が (0,0) となります</label>
@@ -272,7 +329,7 @@
         </table>
       </div>
       </form>
-      <div class="right smallbox">version 2025/4/21</div>
+      <div class="right smallbox">DA シンポジウム 2025 version 2025/5/3</div>
     </div>
     <script>
       createBoardSelector();

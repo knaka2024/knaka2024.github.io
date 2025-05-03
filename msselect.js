@@ -85,21 +85,80 @@ class cellElem {
   isBomb() {
     return (this.value >= MINES_VALUE) ? 1 : 0;
   }
-  access(source) {
-    if (source.slice(-1).shift() == 'primary') {
-      if (!this.isTouch() && !this.isFlag() && !FLAG) {
-        const [x, y] = this.location();
-        printDialog(`${x} ${y}`);
-      }
-    }
-    accessCell(this.index, this.list, this, source);
+  isPrimary(source) {
+    // source is ['primary', 14, 13, 12, 11, 10,...]
+    // primary source is only ['primary']
+    return (source.slice(-1).shift() == 'primary') ? 1:0;
   }
+  isSelectable() {
+    // stop cell.access while FLAG_UPDATE (=1) mode
+    // only untouch and non-flagged cell can be accessed
+    return (!this.isTouch() && !this.isFlag() && !FLAG_UPDATE) ? 1:0;
+  }
+  access(source) {
+    (async () => {
+      await new Promise((resolve) => {
+        wrapaccess(source, this);
+        resolve();
+      });
+    })();
+  }  
   score() {
       let incr = Number(this.value);
       if (this.isBomb()) {
         incr = -20;
       }
       return incr;
+  }
+}
+async function wrapaccess(source, cell) {
+  const isPrimary = cell.isPrimary(source);
+  if (isPrimary) {
+    if (cell.isSelectable()) {
+      const [x, y] = cell.location();
+      printDialog(`${x} ${y}`);
+    }
+  }
+  if (isPrimary) {
+    await new Promise((resolve2) => {
+      loadingAnimation(resolve2);
+    });
+  }
+  await new Promise((resolve3) => {
+    accessCell(cell.index, cell.list, cell, source);
+    if (isPrimary) {
+      checkRemains();
+      removeAnimation();
+    }
+    resolve3();
+  });
+}
+// don't wait cell access finished
+function cellAccessPrimary(cell, event) {
+  cell.access(['primary']);
+}
+async function loadingAnimation(resolve) {
+  createAnimation();
+  // repaint
+  for (let i = 0; i < 2; i++) {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  } 
+  console.log('start loading animation');
+  resolve();
+}
+function removeAnimation() {
+  const layer = document.getElementById('mycoverall');
+  if (layer != null) {
+    layer.classList.add('invisible');
+    console.log('remove loading animation');
+  }
+}
+function checkRemains() {
+  // check all alive cells touched
+  const remains = foreachUntouchCells('countAlive');
+  printRemains(remains);
+  if (remains == 0) {
+    finishSelection();
   }
 }
 function appendScrollBox(box, msg) {
@@ -149,16 +208,17 @@ function printResult(score) {
   // print to console
   printConsole(`score ${finalScore} ${BOARD_NAME}`);
 }
-function printStatus() {
+// flag update mode status
+function printFUstatus() {
   const statusBox = document.getElementById('mystatus');
-  let msg = FLAG ? 'on' : 'off';
+  let msg = FLAG_UPDATE ? 'on' : 'off';
   statusBox.value = msg;  
   // print to console
   printConsole(`flag ${msg}`);
 }
-function printRemain(msg) {
-  const remainBox = document.getElementById('myremain');
-  remainBox.value = msg;  
+function printRemains(msg) {
+  const remainsBox = document.getElementById('myremains');
+  remainsBox.value = msg;  
   // print to console
   //printConsole(`remaining ${msg}`);
 }
@@ -178,7 +238,7 @@ function countScore(cell, type) {
   printScore(cell, incr, type);
 }
 // access given index (board location) 
-function accessCell(index, cellElemArray, cell, source) {
+async function accessCell(index, cellElemArray, cell, source) {
   if (!cell.checkRange()) {
     // out of range
     console.log('#ER index out of range', index);
@@ -186,7 +246,8 @@ function accessCell(index, cellElemArray, cell, source) {
   }
   if (cell.isTouch()) {
     console.log('skip', index, source);
-  } else if (FLAG) {
+  } else if (FLAG_UPDATE) {
+    // enter flag on/off update mode
     if (cell.isFlag()) {
       console.log('flag off', index, source);
       cell.unflag();
@@ -215,12 +276,16 @@ function accessCell(index, cellElemArray, cell, source) {
     }
     // count score
     countScore(cell, 'obtain');
+    /*
+    // move finished check to checkRemains() of wrapaccess() out of accessCell()
     // check all alive cells touched
     const remains = foreachUntouchCells('countAlive');
-    printRemain(remains);
+    printRemains(remains);
     if (remains == 0) {
+      console.log('call finish from index', index, 'while remains', remains);
       finishSelection();
     }
+    */
   }
   return 1;
 }
@@ -301,6 +366,7 @@ class Board {
     this.size_x = 0;
     this.size_y = 0;
     this.boardData = undefined;
+    this.closed = false;
   }
   append(name, data) {
     this.nameList.push(name);
@@ -707,28 +773,32 @@ class cellList {
   continue_or_finish() {
     const RDCONFIG = getReadListConfig();
     if (/finish/.test(RDCONFIG)) {
-      finishSelection();
       return false;
     } else {
       return true;
     }
   }
-  startSelection() {
+  startSelection(resolve) {
     const board = document.getElementById('myboard');
     const cellElemLists = board.getElementsByTagName('td');
     const cellElemArray = [...cellElemLists];
-    for (let i=0; i < this.locList.length; i++) {
-      const index = SIZE_X*this.locList[i].y + this.locList[i].x;
-      //console.log("index", index, this.locList[i]);
-      startSelection(cellElemArray, index);
-    }
-  }
+    (async () => {
+      for (let i=0; i < this.locList.length; i++) {
+        const index = SIZE_X*this.locList[i].y + this.locList[i].x;
+        console.log("index", index, this.locList[i]);
+        const cell = new cellElem(index, cellElemArray);
+        await wrapaccess(['primary'], cell);
+      }
+      resolve();
+    })();
+  }  
 }
-function readCellListFile(fileName) {
+async function readCellListFile(fileName) {
   // 'this' is binded to reader
   const fileData = this.result;
   const clfile = new cellListFile(fileData, fileName);
-  while (clfile.lines.length > 0) {
+  let readEnable = true;
+  while ((clfile.lines.length > 0) && readEnable) {
     const cldata = new cellList(clfile.popData());
     const bdname = clfile.boardName();
     if (cldata.locList === undefined) {
@@ -745,12 +815,19 @@ function readCellListFile(fileName) {
     if (BDROOT.idx(bdname) >= 0) {
       BDROOT.load(bdname);
       console.log('cell list', cldata.locList);
-      cldata.startSelection();
-      if (cldata.continue_or_finish()) {
-        // skip after 2nd board when continue mode selected
-        printConsole(`break after reading ${bdname} cell list`);
-        break; 
-      }
+      (async () => {
+        await new Promise((resolve) => {
+          cldata.startSelection(resolve);
+        });
+        if (cldata.continue_or_finish()) {
+          // skip after 2nd board when continue mode selected
+          printConsole(`break after reading ${bdname} cell list`);
+          readEnable = false; 
+        } else {
+          // finish after all cell lists are accessed
+          finishSelection();
+        }
+      })();
     } else {
       printConsole(`#ER no board data found ${bdname}, aborted`);
       return false;
@@ -947,6 +1024,7 @@ function initializeBoard() {
   SCORE = 0;
   VISIBILITY = 0;
   flagUpdate('init');
+  BDROOT.closed = false;
 }
 function removeEventListener() {
   const board = document.getElementById('myboard');
@@ -965,37 +1043,32 @@ function removeEventListener() {
   }
 }
 function addEachCellEventListener(cell) {
-  const board = document.getElementById('myboard');
-  const cellElemLists = board.getElementsByTagName('td');
+  //const board = document.getElementById('myboard');
+  //const cellElemLists = board.getElementsByTagName('td');
   // put event listener for flagged cells
-  cellElemLists[cell.index].addEventListener('click', function(event) {
-    startSelection(cell.list, cell.index);
-  }, {once: true});  
+  const bindedHandler = cellAccessPrimary.bind(cell.list[cell.index], cell);
+  cell.list[cell.index].addEventListener('click', bindedHandler, {once: true});
 }
 function flagUpdate(task) {
   switch (task) {
-    case 'init': FLAG = 0; break;
-    case 'on': FLAG = 1; break;
-    case 'off':
-      FLAG = 0;
-      break;
+    case 'init': FLAG_UPDATE = 0; break;
+    case 'on': FLAG_UPDATE = 1; break;
+    case 'off': FLAG_UPDATE = 0; break;
     case 'toggle':
-      FLAG = !FLAG;
-      if (FLAG) {
+      FLAG_UPDATE = !FLAG_UPDATE;
+      if (FLAG_UPDATE) {
+        // enter flag update mode
+        // recover flagged cell event listener from access lock
         foreachUntouchCells('addFlagEventListener');
       } else {
+        // exit flag update mode
         foreachUntouchCells('removeAllEvents');
         // refresh needed because node pointer changed by removing events using cloneNode()
         foreachUntouchCells('refreshAddEventListener');
       }
       break;
   }
-  printStatus();
-}
-function startSelection(cellElemArray, index, event) {
-  //console.log('binded args', index, cellElemArray.length);
-  const cell = new cellElem(index, cellElemArray);
-  cell.access(['primary']);
+  printFUstatus();
 }
 function addCellEventListener() {
   const board = document.getElementById('myboard');
@@ -1011,8 +1084,9 @@ function addCellEventListener() {
     cellElemArray[i].addEventListener('click', function(){
       // const cellElemArray = [...cellElemLists];
       // get click position. upper left is 0 and start from 0,1,2,..IDX_MAX
-      const tableIndex = cellElemArray.indexOf(this);
-      const cell = new cellElem(tableIndex, cellElemArray);
+      //const tableIndex = cellElemArray.indexOf(this);
+      //const cell = new cellElem(tableIndex, cellElemArray);
+      //use above cell object created by for loop, instead of creating inside function
       cell.access(['primary']);
     }, {once: true});
   }
@@ -1101,8 +1175,8 @@ function foreachUntouchCells(task) {
         case 'removeEventListener':
           // doesn't work
           if (cell.isFlag()) {
-            const bindedHandler = startSelection.bind(cellElemArray[i], cellElemArray, i);
-            cellElemArray[i].removeEventListener('click', bindedHandler);
+            const bindedHandler = cellAccessPrimary.bind(cell.list[cell.index], cell);
+            cell.list[cell.index].removeEventListener('click', bindedHandler);
           }
           break;
         case 'removeFlagEvents':
@@ -1117,17 +1191,16 @@ function foreachUntouchCells(task) {
           break;
         case 'addFlagEventListener':
           if (cell.isFlag()) {
-            const bindedHandler = startSelection.bind(cellElemArray[i], cellElemArray, i);
             // put event listener for flagged cells
-            cellElemArray[i].addEventListener('click', bindedHandler, {once: true});
+            const bindedHandler = cellAccessPrimary.bind(cell.list[cell.index], cell);
+            cell.list[cell.index].addEventListener('click', bindedHandler, {once: true});
           }
           break;
         case 'refreshAddEventListener':
           if (!cell.isFlag()) {
-            const bindedHandler = startSelection.bind(cellElemArray[i], cellElemArray, i);
             // put event listener for flagged cells
-            cellElemArray[i].addEventListener('click', bindedHandler, {once: true});
-          }
+            const bindedHandler = cellAccessPrimary.bind(cell.list[cell.index], cell);
+            cell.list[cell.index].addEventListener('click', bindedHandler, {once: true});          }
           break;
         case 'addFlagEventListenerByNonameFunction':
           if (!cell.isFlag()) {
@@ -1192,18 +1265,21 @@ class SummaryTable {
   }
 }
 function finishSelection() {
-  //console.log('finish score is', SCORE);
-  foreachUntouchCells('countPenalty');
-  foreachUntouchCells('closure');
-  printResult(SCORE);
-  // clear board event listener
-  removeEventListener();
-  printConsole('selection finished');
-  // create summary table
-  if (SUMMARY === undefined) {
-    SUMMARY = new SummaryTable();
+  if (!BDROOT.closed) {
+    foreachUntouchCells('countPenalty');
+    foreachUntouchCells('closure');
+    printResult(SCORE);
+    // clear board event listener
+    removeEventListener();
+    printConsole('selection finished');
+    // create summary table
+    if (SUMMARY === undefined) {
+      SUMMARY = new SummaryTable();
+    }
+    SUMMARY.put(BOARD_NAME, SCORE);
+    // board closed
+    BDROOT.closed = true;
   }
-  SUMMARY.put(BOARD_NAME, SCORE);
 }
 function addfinishEventListener() {
   const button = document.getElementById('myfinish');
@@ -1468,7 +1544,7 @@ function createSafeCells(size_x, size_y, mcount) {
   return sfz.cells.sort(compNum);
 }
 function createMines(rand, cellCount, minesCount, safeCell) {
-  if (minesCount > cellCount) {
+  if (minesCount >= cellCount) {
     // mines count is limited by cell count (-1)
     minesCount = cellCount -1;
     printConsole(`limit mines to ${minesCount}`);
@@ -1541,4 +1617,43 @@ function generateBoardData(size_x, size_y, minesCount, rand) {
   //console.log(boardData);
   //return [...boardData];
   return boardData;
+}
+function createAnimation() {
+  const USE_CREATE_ELEMENT = 0;
+  if (USE_CREATE_ELEMENT) {
+    const layer = document.getElementById('mycoverall');
+    const div1 = document.createElement('div');
+    const div2 = document.createElement('div');
+    div1.className = 'circleball';
+    div2.className = 'loadtext';
+    div2.innerHTML = 'loading...';
+    div2.id = 'myloading';
+    layer.appendChild(div1);
+    layer.appendChild(div2);
+  } else {
+    const layer = document.getElementById('mycoverall');
+    layer.classList.remove('invisible');
+    console.log('create animation');
+  }
+}
+// doesn't work while await accessCell()
+async function countUpLoading(ldcnt) {
+  // use as countUpLoading(+1);
+  const layer = document.getElementById('mycoverall');
+  const loading = document.getElementById('myloading');
+  const isInvisible = layer.classList.contains('invisible');
+  console.log('invisible', isInvisible, 'ldcnt', ldcnt);
+  await repaint();
+  if (!isInvisible) {
+    const newtext = loading.innerText.replace(/\s+.*/, '') + ` ${ldcnt}`;
+    loading.innerText = newtext;
+    console.log('innerText', loading.innerText);
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        let int = Number(ldcnt) +1;
+        countUpLoading(int);
+        resolve();
+      }, 1000);
+    });
+  }
 }
