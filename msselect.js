@@ -2,7 +2,7 @@
 // dummy cell element node
 class cellElemNode {
   constructor(value) {
-    this.innerHTML = value;
+    this.innerText = value;
   }
 }
 // HTML table cell element
@@ -12,7 +12,8 @@ class cellElem {
     this.list = elemList;
     this.index = index;
     this.node = this.list[this.index];
-    this.value = this.node.innerHTML;
+    this.value = this.node.innerText;
+    this.queue = [];
   }
   location(givenIndex) {
     let myindex = (givenIndex !== undefined) ? givenIndex : this.index;
@@ -21,7 +22,7 @@ class cellElem {
     return [x,y];
   }
   update() {
-    this.value = this.node.innerHTML;
+    this.value = this.node.innerText;
   }
   checkRange() {
     return ((this.index < 0)||(this.index > IDX_MAX)) ? 0 : 1;
@@ -34,6 +35,7 @@ class cellElem {
   touch() {
     let node = this.node;
     node.classList.add('touch');
+    //BDROOT.touchList[this.index] = true;
   }
   bomb() {
     let node = this.node;
@@ -42,6 +44,7 @@ class cellElem {
   untouch() {
     let node = this.node;
     node.classList.remove('touch');
+    //BDROOT.touchList[this.index] = false;
   }
   flag() {
     let node = this.node;
@@ -58,6 +61,7 @@ class cellElem {
         node.classList.add('safe');
       } else if (this.isEmpty()) {
         node.classList.add('touch');
+        //BDROOT.touchList[this.index] = true;
       } else {
         node.classList.add('penalty');
       }
@@ -75,6 +79,7 @@ class cellElem {
   }
   isTouch() {
     return this.node.classList.contains('touch');
+    //return (BDROOT.touchList[this.index]) ? 1:0;
   }
   isFlag() {
     return this.node.classList.contains('flag');
@@ -95,14 +100,61 @@ class cellElem {
     // only untouch and non-flagged cell can be accessed
     return (!this.isTouch() && !this.isFlag() && !FLAG_UPDATE) ? 1:0;
   }
+  putQueue(reserveList) {
+    this.queue = [];
+    //const reserve = {index:index, source:source}
+    for (let i=0; i < reserveList.length; i++) {
+      const reserve = reserveList[i];
+      this.queue.push(reserve);
+    }
+    return this;
+  }
+  evalQueue() {
+    const SOURCE_KEEP_ALL_RECURSIVE_CELLS = 0;
+    let newList = [];
+    for (let i=0; i < this.queue.length; i++) {
+      const reserve = this.queue[i];
+      const adjCell = new cellElem(reserve.index, this.list);
+      const curSrc = (SOURCE_KEEP_ALL_RECURSIVE_CELLS) ? reserve.source : reserve.source.slice(0,1);
+      const newSrc = curSrc.concat([this.index]);
+      adjCell.access(newSrc);
+      // new pivot cells are collected and update this primary cell queue after all pivot cells are accessed
+      for (let j=0; j < adjCell.queue.length; j++) {
+        newList.push(adjCell.queue[j]);
+      }
+    }
+    // update queue
+    this.putQueue(newList);
+    return this;
+  }
+  count_and_put_mines() {
+    let mines = 0;
+    for (let i=0; i < this.queue.length; i++) {
+      const index = this.queue[i].index;
+      const adjCell = new cellElem(index, this.list);
+      if (adjCell.isBomb()) {
+        // bomb cell count
+         mines++;
+      }
+    }
+    let node = this.node;
+    node.innerText = mines;
+    return this;
+  }
   access(source) {
-    (async () => {
-      await new Promise((resolve) => {
-        wrapaccess(source, this);
-        resolve();
-      });
-    })();
-  }  
+    const isPrimary = this.isPrimary(source);
+    if (isPrimary) {
+      (async () => {
+        await new Promise((resolve) => {
+          wrapaccess(source, this);
+          resolve();
+        });
+      })();
+    } else {
+      // don't use promise to prevent promise stack overflow
+      wrapaccess(source, this);
+    }
+  }
   score() {
       let incr = Number(this.value);
       if (this.isBomb()) {
@@ -124,14 +176,28 @@ async function wrapaccess(source, cell) {
       loadingAnimation(resolve2);
     });
   }
-  await new Promise((resolve3) => {
+  if (isPrimary) {
+    await new Promise((resolve3) => {
+      accessCell(cell.index, cell.list, cell, source);
+      // don't use recursive call to prevent promise stack overflow
+      const USE_PIVOT_QUEUE = 1;
+      if (USE_PIVOT_QUEUE) {
+        while (cell.queue.length > 0) {
+          // cell.queue will be updated inside evalQueue()
+          cell.evalQueue();
+        }
+      }
+      if (isPrimary) {
+        checkRemains();
+        removeAnimation();
+      }
+      resolve3();
+    });
+  } else {
+    // don't use promise to prevent promise stack overflow
     accessCell(cell.index, cell.list, cell, source);
-    if (isPrimary) {
-      checkRemains();
-      removeAnimation();
-    }
-    resolve3();
-  });
+    // new pivot cells are collected by cell.evalQueue of primary cell while loop
+  }
 }
 // don't wait cell access finished
 function cellAccessPrimary(cell, event) {
@@ -143,19 +209,21 @@ async function loadingAnimation(resolve) {
   for (let i = 0; i < 2; i++) {
     await new Promise((resolve) => requestAnimationFrame(resolve));
   } 
-  console.log('start loading animation');
+  //console.log('start loading animation');
   resolve();
 }
 function removeAnimation() {
   const layer = document.getElementById('mycoverall');
   if (layer != null) {
     layer.classList.add('invisible');
-    console.log('remove loading animation');
+    //console.log('remove loading animation');
   }
 }
 function checkRemains() {
   // check all alive cells touched
-  const remains = foreachUntouchCells('countAlive');
+  const cells = new untouchCellTask();
+  const remains = cells.countAlive();
+  //console.log('count alive', remains);
   printRemains(remains);
   if (remains == 0) {
     finishSelection();
@@ -239,36 +307,52 @@ function countScore(cell, type) {
 }
 // access given index (board location) 
 async function accessCell(index, cellElemArray, cell, source) {
+  const USE_PIVOT_QUEUE = 1;
+  const QUIET = 1;
+  const showMsg = (stage) => {
+    if (!QUIET) {
+      console.log(stage, index, source);
+    }
+  }
   if (!cell.checkRange()) {
     // out of range
-    console.log('#ER index out of range', index);
+    showMsg('#ER index out of range');
     return 0;
   }
   if (cell.isTouch()) {
-    console.log('skip', index, source);
+    showMsg('skip');
   } else if (FLAG_UPDATE) {
     // enter flag on/off update mode
     if (cell.isFlag()) {
-      console.log('flag off', index, source);
+      showMsg('flag off');
       cell.unflag();
       addEachCellEventListener(cell);
     } else {
-      console.log('flag on', index, source);
+      showMsg('flag on');
       cell.flag();
     }
     // exit from flag update mode
     flagUpdate('toggle');
   } else if (cell.isFlag() && (source.slice(-1).shift == 'primary')) {
-    console.log('skip flag', index, source);
+    showMsg('skip flag');
   } else {
     cell.touch();
     // remove flag automatically
     cell.unflag();
-    console.log('touch', index, source);
+    showMsg('touch');
     if (cell.isEmpty()) {
-      console.log('empty', index, source);
+      showMsg('empty');
       // pivot to expand reagion
-      pivotCell(index, cellElemArray, cell, 'expand_region', source);
+      const pbtcells = new pibotCellList(cell, source);
+      const pbtIndex = pbtcells.region().regionShrink().pivotLocation().pivotIndex();
+      // put pivot cells index to current cell queue
+      cell.putQueue(pbtIndex);
+      if (USE_PIVOT_QUEUE) {
+        // cell.queue has reserve list (index, source)
+        //showMsg('queue', index, cell.queue);
+      } else {
+        cell.evalQueue();
+      }
     } else if (cell.isBomb()) {
       cell.bomb();
       const [x, y] = cell.location();
@@ -276,16 +360,6 @@ async function accessCell(index, cellElemArray, cell, source) {
     }
     // count score
     countScore(cell, 'obtain');
-    /*
-    // move finished check to checkRemains() of wrapaccess() out of accessCell()
-    // check all alive cells touched
-    const remains = foreachUntouchCells('countAlive');
-    printRemains(remains);
-    if (remains == 0) {
-      console.log('call finish from index', index, 'while remains', remains);
-      finishSelection();
-    }
-    */
   }
   return 1;
 }
@@ -299,63 +373,84 @@ function pibotAdjacent(cur, min, max) {
   }
   return [...list];
 }
-// pivot around given index (board location)
-function pivotCell(index, cellElemArray, cell, task, source) {
-  const SKIP_SAME_LOC_AS_SOURCE = 1;
-  let pivot = [];
-  const [x, y] = cell.location();
-  let x_idx = pibotAdjacent(x, 0, SIZE_X-1);
-  let y_idx = pibotAdjacent(y, 0, SIZE_Y-1);
-  if (SKIP_SAME_LOC_AS_SOURCE && (source !== undefined)) {
-    // Cut the first 'primary' and choose the last index (previous index)
-    const traced = source.slice(1).slice(-1);
-    for (let i=0; i < traced.length; i++) {
-      const [tx, ty] = cell.location(traced[i]);
-      //console.log('pivot', index, 'traced', traced, `(${tx}, ${ty})`, 'x_idx', x_idx, 'y_idx', y_idx);
-      const tx_idx = x_idx.indexOf(tx);
-      const ty_idx = y_idx.indexOf(ty);
-      // remove previous tx or ty from pivot list when location changed from previous
-      // x=3, tx=2, x_idx=[2,3,4], but previous tx=2 already traced
-      if ((tx != x) && (tx_idx >= 0)) {
-        x_idx.splice(tx_idx, 1);
-      }
-      if ((ty != y) && (ty_idx >= 0)) {
-        y_idx.splice(ty_idx, 1);
-      }
-      //console.log('modified', 'x_idx', x_idx, 'y_idx', y_idx);
-    }
+class boardIndex {
+  constructor(cidx, min, max) {
+    this.cur = Number(cidx);
+    this.min = Number(min);
+    this.max = Number(max);
+    this.list = [];
   }
-  for (let i=0; i < x_idx.length; i++) {
-    for (let j=0; j < y_idx.length; j++) {
-      pivot.push(SIZE_X*y_idx[j] + x_idx[i]);
-    }
-  }
-  //console.log('pivot', index, 'are', pivot);
-  let mines = 0;
-  for (let i=0; i < pivot.length; i++) {
-    if (pivot[i]!=index) {
-      const adjCell = new cellElem(pivot[i], cellElemArray);
-      const [adjx, adjy] = adjCell.location();
-      //console.log('pivot', pivot[i], '('+adjx, adjy+')', 'value', adjCell.value, 'i', i, 'index', index);
-      //console.log('pivot from', index, 'to', pivot[i],'('+i+'/'+pivot.length+')');
-      switch (task) {
-        case 'expand_region':
-          adjCell.access(source.concat([index]));
-          break;
-        case 'count_mines':
-          if (adjCell.isBomb()) {
-            // bomb cell count
-            mines++;
-          }
-          break;
+  pibot_adj() {
+    this.list = [];
+    for (let i=(this.cur-1); i <= (this.cur+1); i++) {
+      if ((i >= this.min)&&(i <= this.max)) {
+         this.list.push(i);
       }
     }
+    return this;    
   }
-  switch (task) {
-    case 'count_mines':
-      cell.node.innerHTML = mines;
-      return mines;
-      break;
+  remove_source(srcidx) {
+    const j = this.list.indexOf(srcidx);
+    // remove previous tx or ty from pivot list when location changed from previous
+    // x=3, tx=2, x_idx=[2,3,4], but previous tx=2 already traced
+    if ((srcidx != this.cur) && (j >= 0)) {
+      this.list.splice(j, 1);
+    }
+  }
+}
+class pibotCellList {
+  constructor(pcell, source) {
+    this.locList = [];
+    this.pcell = pcell;
+    this.source = source;
+    const [x, y] = this.pcell.location();
+    // traced is cut 0 and fetch tail
+    // if one item list, traced = []
+    this.prop = {
+      xs: SIZE_X,
+      ys: SIZE_Y,
+      xmax: SIZE_X -1,
+      ymax: SIZE_Y -1,
+      traced: source.slice(1).slice(-1),
+      x: x,
+      y: y
+    }
+    this.x_idx = new boardIndex(this.prop.x, 0, this.prop.xmax);
+    this.y_idx = new boardIndex(this.prop.y, 0, this.prop.ymax);
+  }
+  region() {
+    this.x_idx.pibot_adj();
+    this.y_idx.pibot_adj();
+    return this;
+  }
+  regionShrink() {
+    if (this.prop.traced.length > 0) {
+      const [tx, ty] = this.pcell.location(this.prop.traced.shift());
+      this.x_idx.remove_source(tx);
+      this.y_idx.remove_source(ty);
+    }
+    return this;
+  }
+  pivotLocation() {
+    for (let i=0; i < this.x_idx.list.length; i++) {
+      for (let j=0; j < this.y_idx.list.length; j++) {
+        const loc = {x:this.x_idx.list[i], y:this.y_idx.list[j]}
+        if ((loc.x != this.prop.x) || (loc.y != this.prop.y)) {
+          this.locList.push(loc);
+        }
+      }
+    }    
+    return this;
+  }
+  pivotIndex() {
+    let plist = [];
+    for (let i=0; i < this.locList.length; i++) {
+      const loc = this.locList[i];
+      const index = this.prop.xs*loc.y + loc.x;
+      const reserve = {index:index, source:this.source}
+      plist.push(reserve);
+    }
+    return plist;
   }
 }
 // define board bank
@@ -367,6 +462,7 @@ class Board {
     this.size_y = 0;
     this.boardData = undefined;
     this.closed = false;
+    //this.touchList = [];
   }
   append(name, data) {
     this.nameList.push(name);
@@ -564,7 +660,7 @@ class BoardSelector {
   import(bdroot) {
     for (let bdn = 0; bdn < bdroot.nameList.length; bdn++) {
       let newopt = document.createElement('option');
-      newopt.innerHTML = bdroot.nameList[bdn];
+      newopt.innerText = bdroot.nameList[bdn];
       this.body.appendChild(newopt);
     }
     return this;
@@ -675,6 +771,7 @@ class boardFile {
       if (this.isHeader()) {
         if (cellData.length == 0) {
           // the 1st line must be a header
+          // skip empty board header (header exists, but no cellData)
           this.header = this.lines.shift();
         } else {
           // break at the 2nd met header
@@ -737,11 +834,12 @@ class cellListFile extends boardFile {
     this.header = '';
     while (this.lines.length > 0) {
       if (this.isHeader()) {
-        if (cellData.length == 0) {
+        if (this.header == '') {
           // the 1st line must be a header
           this.header = this.lines.shift();
         } else {
           // break at the 2nd met header
+          // break when header exists, but no cellData         
           break;
         }
       } else {
@@ -785,20 +883,43 @@ class cellList {
     (async () => {
       for (let i=0; i < this.locList.length; i++) {
         const index = SIZE_X*this.locList[i].y + this.locList[i].x;
-        console.log("index", index, this.locList[i]);
+        //console.log("index", index, this.locList[i]);
         const cell = new cellElem(index, cellElemArray);
         await wrapaccess(['primary'], cell);
       }
       resolve();
     })();
-  }  
+    return this;
+  }
+  evalBoard(bdname) {
+    if (this.continue_or_finish()) {
+      // skip after 2nd board when continue mode selected
+      printConsole(`break after reading ${bdname} cell list`);
+    } else {
+      // finish after all cell lists are accessed
+      finishSelection();
+    }
+    return this;
+  }
 }
-async function readCellListFile(fileName) {
-  // 'this' is binded to reader
-  const fileData = this.result;
-  const clfile = new cellListFile(fileData, fileName);
-  let readEnable = true;
-  while ((clfile.lines.length > 0) && readEnable) {
+async function evalCellList(bdname, cldata) {
+  if (BDROOT.idx(bdname) >= 0) {
+    BDROOT.load(bdname);
+    //console.log(bdname, 'cell list', cldata.locList);
+    await new Promise((resolve) => {
+      cldata.startSelection(resolve);
+    });
+    cldata.evalBoard(bdname);
+    return true;
+  } else {
+    printConsole(`#ER no board data found ${bdname}, aborted`);
+    return false;
+  }
+}
+function checkCellListFile(fileData) {
+  const clfile = new cellListFile(fileData);
+  let bdc = 0;
+  while (clfile.lines.length > 0) {
     const cldata = new cellList(clfile.popData());
     const bdname = clfile.boardName();
     if (cldata.locList === undefined) {
@@ -806,33 +927,41 @@ async function readCellListFile(fileName) {
       return false;
     }
     printConsole(`found ${bdname} cell list`);
+    bdc++;
     if (BDROOT.idx(bdname) < 0) {
+      // generate board data
       const bdfile = new boardFile('','','');
       const bdprop = bdfile.boardProperty(bdname);
       BDROOT.new_board(bdprop.x, bdprop.y, bdprop.mines, bdprop.id).push_tail();
       updateBoardSelector();
     }
-    if (BDROOT.idx(bdname) >= 0) {
-      BDROOT.load(bdname);
-      console.log('cell list', cldata.locList);
-      (async () => {
-        await new Promise((resolve) => {
-          cldata.startSelection(resolve);
-        });
-        if (cldata.continue_or_finish()) {
-          // skip after 2nd board when continue mode selected
-          printConsole(`break after reading ${bdname} cell list`);
-          readEnable = false; 
-        } else {
-          // finish after all cell lists are accessed
-          finishSelection();
-        }
-      })();
-    } else {
-      printConsole(`#ER no board data found ${bdname}, aborted`);
-      return false;
+  }
+  printConsole(`total ${bdc} board(s) found`);
+  return true;
+}
+async function readCellListFile(fileName) {
+  // 'this' is binded to reader
+  const fileData = this.result;
+  if (!checkCellListFile(fileData)) {
+    return false;
+  }
+  const clfile = new cellListFile(fileData);
+  let readEnable = true;
+  while ((clfile.lines.length > 0) && readEnable) {
+    const cldata = new cellList(clfile.popData());
+    const bdname = clfile.boardName();
+    const ret = await evalCellList(bdname, cldata);
+    //console.log('await return', ret);
+    if (!ret) {
+      // aborted
+      readEnable = false;
+    }
+    if (cldata.continue_or_finish()) {
+      // continue (don't finish)
+      readEnable = false;
     }
   }
+  return true;
 }
 function loadLastBoardandMergeRoot(bdroot) {
   if (bdroot.nameList.length > 0) {
@@ -911,7 +1040,7 @@ function getBoardConfig() {
 function getReadListConfig() {
   // CSS selector = #<id_name>
   const rdconfig = document.querySelector('#mybdconfig').readlist.value;
-  console.log('rdconfig', rdconfig);
+  //console.log('rdconfig', rdconfig);
   return rdconfig;
 }
 function resetBoardForm() {
@@ -1025,6 +1154,7 @@ function initializeBoard() {
   VISIBILITY = 0;
   flagUpdate('init');
   BDROOT.closed = false;
+  //BDROOT.touchList = [];
 }
 function removeEventListener() {
   const board = document.getElementById('myboard');
@@ -1046,8 +1176,8 @@ function addEachCellEventListener(cell) {
   //const board = document.getElementById('myboard');
   //const cellElemLists = board.getElementsByTagName('td');
   // put event listener for flagged cells
-  const bindedHandler = cellAccessPrimary.bind(cell.list[cell.index], cell);
-  cell.list[cell.index].addEventListener('click', bindedHandler, {once: true});
+  const bindedHandler = cellAccessPrimary.bind(cell.node, cell);
+  cell.node.addEventListener('click', bindedHandler, {once: true});
 }
 function flagUpdate(task) {
   switch (task) {
@@ -1056,15 +1186,18 @@ function flagUpdate(task) {
     case 'off': FLAG_UPDATE = 0; break;
     case 'toggle':
       FLAG_UPDATE = !FLAG_UPDATE;
+      const cells = new untouchCellTask();
       if (FLAG_UPDATE) {
         // enter flag update mode
         // recover flagged cell event listener from access lock
-        foreachUntouchCells('addFlagEventListener');
+        cells.addFlagEventListener();
       } else {
         // exit flag update mode
-        foreachUntouchCells('removeAllEvents');
+        cells.removeAllEvents();
+        // previous cells are destroyed, dont' use cells
         // refresh needed because node pointer changed by removing events using cloneNode()
-        foreachUntouchCells('refreshAddEventListener');
+        const cells2 = new untouchCellTask();
+        cells2.refreshAddEventListener();
       }
       break;
   }
@@ -1081,6 +1214,9 @@ function addCellEventListener() {
     const cell = new cellElem(i, cellElemArray);
     // reset touch class from each cell
     cell.init();
+    const bindedHandler = cellAccessPrimary.bind(cell.node, cell);
+    cellElemArray[i].addEventListener('click', bindedHandler, {once: true});  
+    /*
     cellElemArray[i].addEventListener('click', function(){
       // const cellElemArray = [...cellElemLists];
       // get click position. upper left is 0 and start from 0,1,2,..IDX_MAX
@@ -1089,6 +1225,7 @@ function addCellEventListener() {
       //use above cell object created by for loop, instead of creating inside function
       cell.access(['primary']);
     }, {once: true});
+    */
   }
 }
 function createBoard(lines) {
@@ -1105,7 +1242,7 @@ function createBoard(lines) {
   for (let line = 0; line < lines.length; line++) {
     // console.log(line + ' --> ' + lines[line]);
     let tline = document.createElement('tr');
-    //tline.innerHTML = lines[line];
+    //tline.innerText = lines[line];
     const chars = lines[line].split('');
     if (chars.length == 0) {
       // skip empty line
@@ -1123,7 +1260,7 @@ function createBoard(lines) {
         count_x++;
       }
       let tchar = document.createElement('td');
-      tchar.innerHTML = chars[char];
+      tchar.innerText = chars[char];
       tchar.className = 'init invisible';
       tline.appendChild(tchar);
     }
@@ -1139,89 +1276,90 @@ function createBoard(lines) {
   // the last index of table cell
   IDX_MAX = SIZE_X * SIZE_Y -1;
 }
-
-function foreachUntouchCells(task) {
-  const board = document.getElementById('myboard');
-  const cellElemLists = board.getElementsByTagName('td');
-  const cellElemArray = [...cellElemLists];
-  let counter = 0;
-  let alives = [];
-  for (let i=0; i < cellElemArray.length; i++) {
-    const cell = new cellElem(i, cellElemArray);
-    //console.log('change visibility', i);
-    if (!cell.isTouch()) {
-      switch (task) {
-        case 'toggleVisibility':
-          if (VISIBILITY) {
-            //console.log('visible-off', i);
-            cell.invisible();
-          } else {
-            //console.log('visible-on', i);
-            cell.visible();
-          }
-          break;
-        case 'countPenalty':
-          countScore(cell, 'penalty');
-          break;
-        case 'closure':
-          cell.close();
-          break;
-        case 'countAlive':
-          if (!cell.isBomb()) {
-            counter++;
-            alives.push(i);
-          }
-          break;
-        case 'removeEventListener':
-          // doesn't work
-          if (cell.isFlag()) {
-            const bindedHandler = cellAccessPrimary.bind(cell.list[cell.index], cell);
-            cell.list[cell.index].removeEventListener('click', bindedHandler);
-          }
-          break;
-        case 'removeFlagEvents':
-          if (cell.isFlag()) {
-            const clonedCell = cellElemArray[i].cloneNode(true);
-            cellElemArray[i].replaceWith(clonedCell);
-          }
-          break;
-        case 'removeAllEvents':
-          const clonedCell = cellElemArray[i].cloneNode(true);
-          cellElemArray[i].replaceWith(clonedCell);
-          break;
-        case 'addFlagEventListener':
-          if (cell.isFlag()) {
-            // put event listener for flagged cells
-            const bindedHandler = cellAccessPrimary.bind(cell.list[cell.index], cell);
-            cell.list[cell.index].addEventListener('click', bindedHandler, {once: true});
-          }
-          break;
-        case 'refreshAddEventListener':
-          if (!cell.isFlag()) {
-            // put event listener for flagged cells
-            const bindedHandler = cellAccessPrimary.bind(cell.list[cell.index], cell);
-            cell.list[cell.index].addEventListener('click', bindedHandler, {once: true});          }
-          break;
-        case 'addFlagEventListenerByNonameFunction':
-          if (!cell.isFlag()) {
-            cellElemArray[i].addEventListener('click', function(){
-              const tableIndex = cellElemArray.indexOf(this);
-              const cell = new cellElem(tableIndex, cellElemArray);
-              cell.access(['primary']);
-            }, {once: true});
-          }
-          break;
+class untouchCellTask {
+  constructor() {
+    this.untouchCells = [];
+    const board = document.getElementById('myboard');
+    const cellElemLists = board.getElementsByTagName('td');
+    const cellElemArray = [...cellElemLists];
+    for (let i=0; i < cellElemArray.length; i++) {
+      const cell = new cellElem(i, cellElemArray);
+      if (!cell.isTouch()) {
+        this.untouchCells.push(cell);
       }
     }
-    //console.log('class name (foreach)', task, i, cell.node.className);
   }
-  switch (task) {
-    case 'toggleVisibility': VISIBILITY = !VISIBILITY; break;
-    case 'countAlive':
-      //console.log('alives', alives);
-      return counter;
-      break;
+  foreach(task) {
+    for (let i=0; i < this.untouchCells.length; i++) {
+      task(this.untouchCells[i])
+    }
+    return this;
   }
+  toggleVisibility() {
+    const task = (cell) => {
+      if (VISIBILITY) {
+        //console.log('visible-off', i);
+        cell.invisible();
+      } else {
+        //console.log('visible-on', i);
+        cell.visible();
+      }
+    }
+    this.foreach(task);
+    VISIBILITY = !VISIBILITY;
+    return this;
+  }
+  countPenalty() {
+    const task = (cell) => { countScore(cell, 'penalty'); }
+    return this.foreach(task);
+  }
+  closure() {
+    const task = (cell) => { cell.close(); }
+    return this.foreach(task);
+  }
+  countAlive() {
+    let counter = 0;
+    const task = (cell) => {
+      if (!cell.isBomb()) {
+        counter++;
+      }
+    }
+    this.foreach(task);
+    return counter;
+  }
+  addFlagEventListener() {
+    const task = (cell) => {
+      if (cell.isFlag()) {
+        // put event listener for flagged cells
+        const bindedHandler = cellAccessPrimary.bind(cell.node, cell);
+        cell.node.addEventListener('click', bindedHandler, {once: true});
+      }
+    }
+    return this.foreach(task);
+  }
+  removeAllEvents() {
+    const task = (cell) => {
+      const clonedCell = cell.node.cloneNode(true);
+      cell.node.replaceWith(clonedCell);
+    }
+    // event listener of previous cell.list are destroyed, renew cell.list to access event listener
+    return this.foreach(task);
+  }
+  refreshAddEventListener() {
+    const task = (cell) => {
+      //console.log('refresh', cell);
+      if (!cell.isFlag()) {
+        // put event listener for flagged cells
+        const bindedHandler = cellAccessPrimary.bind(cell.node, cell);
+        cell.node.addEventListener('click', bindedHandler, {once: true});
+      }
+    }
+    return this.foreach(task);
+  }
+}
+function toggleVisibility() {
+  const cells = new untouchCellTask();
+  cells.toggleVisibility();
 }
 class SummaryTable {
   constructor() {
@@ -1245,7 +1383,7 @@ class SummaryTable {
     for (let i = 0; i < items.length; i++) {
       const tdata = document.createElement(ttag);
       const align = (i==0) ? 'left' : 'right';
-      tdata.innerHTML = items[i];
+      tdata.innerText = items[i];
       tdata.className = 'mssummary ' + align;
       tline.appendChild(tdata);
     }
@@ -1266,8 +1404,8 @@ class SummaryTable {
 }
 function finishSelection() {
   if (!BDROOT.closed) {
-    foreachUntouchCells('countPenalty');
-    foreachUntouchCells('closure');
+    const cells = new untouchCellTask();
+    cells.countPenalty().closure();
     printResult(SCORE);
     // clear board event listener
     removeEventListener();
@@ -1600,11 +1738,12 @@ function generateBoardData(size_x, size_y, minesCount, rand) {
   for (let i=0; i < cellElemArray.length; i++) {
     const cell = new cellElem(i, cellElemArray);
     if (!cell.isBomb()) {
-      // count around bomb and write its count to innerHTML of cell
-      let mcount = pivotCell(i, cellElemArray, cell, 'count_mines', undefined);
-      //console.log('pivotCell', i, mcount);
+      // count around bomb and write its count to innerText of cell
+      const pbtcells = new pibotCellList(cell, ['primary']);
+      const pbtIndex = pbtcells.region().pivotLocation().pivotIndex();
+      cell.putQueue(pbtIndex).count_and_put_mines();
     }
-    // update cell.value to cell.node.innerHTML
+    // update cell.value to cell.node.innerText
     cell.update();
     cellData += cell.value;
     // append newline at the tail of size_x
@@ -1626,14 +1765,14 @@ function createAnimation() {
     const div2 = document.createElement('div');
     div1.className = 'circleball';
     div2.className = 'loadtext';
-    div2.innerHTML = 'loading...';
+    div2.innerText = 'loading...';
     div2.id = 'myloading';
     layer.appendChild(div1);
     layer.appendChild(div2);
   } else {
     const layer = document.getElementById('mycoverall');
     layer.classList.remove('invisible');
-    console.log('create animation');
+    //console.log('create animation');
   }
 }
 // doesn't work while await accessCell()
