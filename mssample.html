@@ -67,6 +67,9 @@
       .numbox {
         width: 4rem;
       }
+      .widenumbox {
+        width: 6rem;
+      }
       .scrollbox {
         width: 10rem;
         height: 15rem;
@@ -316,6 +319,25 @@
           <button type="button" id="mydownloadsummary" class="checkbox">download score summary</button>
           <output id="mydownloadsummarystatus" class="checkbox">none</output>
         </div>        
+        <hr>
+        <div class="hdiv">
+          <label class="smallbox">（お試し運用中）</label>
+        </div>        
+        <div class="hdiv">
+          <label class="box">盤面データ・パック：</label>
+          <label class="checkbox smallbox">board count /pack</label>
+          <input type="number" id="mybdcount" class="checkbox widenumbox" min="10" step="10" value="10"/>
+        </div>
+        <div class="hdiv">
+          <label class="box">　　データ　　：</label>
+          <button type="button" id="mydownloadpack" class="checkbox">download board data pack</button>
+          <output id="mydownloadpackstatus" class="checkbox">none</output>
+        </div>
+        <div class="hdiv">
+          <label class="box">　　盤面リスト：</label>
+          <button type="button" id="mydownloadlist" class="checkbox">download board list</button>
+          <output id="mydownloadliststatus" class="checkbox">none</output>
+        </div>
         <hr>
         <!-- reset effective form region end -->
       </form>

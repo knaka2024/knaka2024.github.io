@@ -568,6 +568,31 @@ class Board {
     this.boardData = generateBoardData(x, y, m, rand);
     return this;
   }
+  new_size_mines(step) {
+    const SIZE_XY_LOWER = 4;
+    const SIZE_XY_UPPER = 20;
+    const MINES_RATIO_LOWER = 0.25;
+    const MINES_RATIO_UPPER = 0.50;
+    const SIZE_X_SLICE = 40;
+    const SIZE_Y_SLICE = 20;
+    const MINES_SLICE = 10;
+    const swvar_x = new swingVar(SIZE_X_SLICE);
+    const swvar_y = new swingVar(SIZE_Y_SLICE);
+    const swvar_m = new swingVar(MINES_SLICE);
+    const size_x = swvar_x.range(SIZE_XY_LOWER, SIZE_XY_UPPER).step(step);
+    const size_y = swvar_y.range(SIZE_XY_LOWER, SIZE_XY_UPPER).step(step);
+    const size = size_x * size_y;
+    const mines_lower = size * MINES_RATIO_LOWER;
+    const mines_upper = size * MINES_RATIO_UPPER;
+    const mines = swvar_m.range(mines_lower, mines_upper).step(step);
+    const prop = {
+      size: parseInt(size_x) * parseInt(size_y),
+      xs: parseInt(size_x),
+      ys: parseInt(size_y),
+      ms: parseInt(mines)
+    }
+    return prop;
+  }
   load(name) {
     const lines = this.get_lines(name);
     printConsole(`load ${BOARD_NAME}`);
@@ -588,6 +613,22 @@ class Board {
     addCellEventListener();
     addfinishEventListener();
     printDialog(BOARD_HEADER);
+  }
+}
+class swingVar {
+  constructor(step_per_cycle) {
+    this.omega = 2.0 * Math.PI / step_per_cycle;
+    this.swing = 0.0;
+    this.value0 = 0.0;
+  }
+  range(upper, lower) {
+    this.swing = Math.abs(upper - lower) / 2.0;
+    this.value0 = (upper + lower) / 2.0;
+    return this;
+  }
+  step(step) {
+    const value = this.swing * Math.sin(this.omega * step) + this.value0;
+    return value;
   }
 }
 function removeEmptyItems(array) {
@@ -883,7 +924,6 @@ class cellList {
     (async () => {
       for (let i=0; i < this.locList.length; i++) {
         const index = SIZE_X*this.locList[i].y + this.locList[i].x;
-        //console.log("index", index, this.locList[i]);
         const cell = new cellElem(index, cellElemArray);
         await wrapaccess(['primary'], cell);
       }
@@ -1043,6 +1083,11 @@ function getReadListConfig() {
   //console.log('rdconfig', rdconfig);
   return rdconfig;
 }
+function getBoardPackSize() {
+  const bdcount = document.getElementById('mybdcount').value;
+  //console.log('bdcount', bdcount);
+  return bdcount;
+}
 function resetBoardForm() {
   const resetForm = document.getElementById('myform');
   resetForm.reset();
@@ -1101,6 +1146,16 @@ function fetchSummary() {
   }
   return msg
 }
+function fetchBoardDataPack() {
+  const bdc = getBoardPackSize();
+  const lines = generateBoardDataPack(bdc);
+  return (lines.join('\n') + '\n');
+}
+function fetchBoardDataList() {
+  const bdc = getBoardPackSize();
+  const lines = generateBoardDataList(bdc);
+  return (lines.join('\n') + '\n');
+}
 function downloadBoard(statusBox, event) {
   const text = fetchBoardData();
   //console.log('text', text);
@@ -1115,10 +1170,40 @@ function downloadDialog(statusBox, event) {
   const fname = `select_${bdname}.txt`
   downloadText(text, statusBox, fname);
 }
+function dateStr() {
+  const today = new Date();
+  const yymmdd = today.toLocaleDateString('ja-JP',{
+    year: '2-digit',
+    month: '2-digit',
+    day: '2-digit'
+  }).replaceAll('/','');
+  const hhmmss = today.toLocaleTimeString('ja-JP',{
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }).replaceAll(':','');
+  return `${yymmdd}_${hhmmss}`;
+}
 function downloadSummary(statusBox, event) {
   const text = fetchSummary();
   //console.log('text', text);
-  const fname = `score_summary.csv`
+  const datetime = dateStr();
+  const fname = `score_summary_${datetime}.csv`
+  downloadText(text, statusBox, fname);
+}
+function downloadPack(statusBox, event) {
+  const text = fetchBoardDataPack();
+  //console.log('text', text);
+  const bdc = getBoardPackSize();
+  const fname = `board_pack_${bdc}.txt`
+  downloadText(text, statusBox, fname);
+}
+function downloadList(statusBox, event) {
+  const text = fetchBoardDataList();
+  //console.log('text', text);
+  const bdc = getBoardPackSize();
+  const fname = `board_list_${bdc}.txt`
   downloadText(text, statusBox, fname);
 }
 // cell selection log download
@@ -1126,15 +1211,23 @@ function addDownloadEventListener() {
   const dlBtn1 = document.getElementById('mydownloadbd');
   const dlBtn2 = document.getElementById('mydownloadlog');
   const dlBtn3 = document.getElementById('mydownloadsummary');
+  const dlBtn4 = document.getElementById('mydownloadpack');
+  const dlBtn5 = document.getElementById('mydownloadlist');
   const statusBox1 = document.getElementById('mydownloadbdstatus');
   const statusBox2 = document.getElementById('mydownloadlogstatus');
   const statusBox3 = document.getElementById('mydownloadsummarystatus');
+  const statusBox4 = document.getElementById('mydownloadpackstatus');
+  const statusBox5 = document.getElementById('mydownloadliststatus');
   const bindedHandler1 = downloadBoard.bind(dlBtn1, statusBox1);
   const bindedHandler2 = downloadDialog.bind(dlBtn2, statusBox2);
   const bindedHandler3 = downloadSummary.bind(dlBtn3, statusBox3);
+  const bindedHandler4 = downloadPack.bind(dlBtn4, statusBox4);
+  const bindedHandler5 = downloadList.bind(dlBtn5, statusBox5);
   dlBtn1.addEventListener('click', bindedHandler1);
   dlBtn2.addEventListener('click', bindedHandler2);
   dlBtn3.addEventListener('click', bindedHandler3);
+  dlBtn4.addEventListener('click', bindedHandler4);
+  dlBtn5.addEventListener('click', bindedHandler5);
 }
 function addUploadEventListener() {
   const ulBtn = document.getElementById('myupload');
@@ -1368,6 +1461,7 @@ class SummaryTable {
       this.title();
     }
     this.total = 0;
+    this.trial = 1;
   }
   clean() {
     // delete previous table row
@@ -1375,16 +1469,17 @@ class SummaryTable {
     return this;
   }
   title() {
-    this.append(['board name', 'score', 'total']);
+    this.append(['trial','board name', 'score', 'total']);
   }
   append(items) {
     const tline = document.createElement('tr');
-    const ttag = (items[2] == 'total') ? 'th' : 'td';
+    // items[0] depends on title()
+    const ttag = (items[0] == 'trial') ? 'th' : 'td';
+    const align =[ 'right', 'left', 'right', 'right'];
     for (let i = 0; i < items.length; i++) {
       const tdata = document.createElement(ttag);
-      const align = (i==0) ? 'left' : 'right';
       tdata.innerText = items[i];
-      tdata.className = 'mssummary ' + align;
+      tdata.className = 'mssummary ' + align[i];
       tline.appendChild(tdata);
     }
     this.body.appendChild(tline);
@@ -1396,8 +1491,9 @@ class SummaryTable {
     if (score > 0) {
       this.total += score;      
     }
+    const trial = this.trial++;
     const totalStr = this.total;
-    const items = [board_name, scoreStr, totalStr];
+    const items = [trial, board_name, scoreStr, totalStr];
     this.append(items);
     return this;
   }
@@ -1756,6 +1852,45 @@ function generateBoardData(size_x, size_y, minesCount, rand) {
   //console.log(boardData);
   //return [...boardData];
   return boardData;
+}
+function createParamBoard(step, rand) {
+  const bdroot = new Board();
+  const prop = bdroot.new_size_mines(step);
+  bdroot.new_board(prop.xs, prop.ys, prop.ms, rand).push_top();
+  const bdName = bdroot.first_name();
+  const lines = bdroot.get_data(bdName);
+  return lines;
+}
+function generateBoardDataPack(count, start_id) {
+  const rand = BOARD_RAND;
+  if (start_id === undefined) {
+    start_id = 1;
+  }
+  rand.seek(start_id);
+  let lines = [];
+  for (let i=0; i < count; i++) {
+    const step = i;
+    const newlines = createParamBoard(step, rand);
+    const newdata = newlines.join('\n') + '\n';
+    lines.push(newdata);
+  }
+  return lines;
+}
+function generateBoardDataList(count, start_id) {
+  let USE_HEADER = 1;
+  let lists = [];
+  const lines = generateBoardDataPack(count, start_id);
+  for (let i=0; i < lines.length; i++) {
+    const bdfile = new boardFile(lines[i]);
+    bdfile.popData();
+    if (USE_HEADER) {
+      lists.push(bdfile.header);
+    } else {
+      const bdname = bdfile.boardName();
+      lists.push(bdname);
+    }
+  }
+  return lists;
 }
 function createAnimation() {
   const USE_CREATE_ELEMENT = 0;
