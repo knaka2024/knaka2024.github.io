@@ -129,6 +129,22 @@
                    1s linear 0.1s infinite blink;
         */
       }
+      @property --count {
+        syntax: "<integer>";
+        inherits: true;
+        initial-value: 0;
+      }
+      .loadcount {
+        counter-set: elapsed var(--count);
+        animation: 3600s linear 0s infinite countup;
+      }
+      .loadcount::after {
+        content: counter(elapsed) "sec";
+      }
+      @keyframes countup {
+        0% { --count: 0; }
+        100% { --count: 3600; }
+      }
       @keyframes rotation {
         0% { transform: rotate(0); }
         100% { transform: rotate(360deg); }
@@ -217,7 +233,7 @@
   <body>
     <div id="mycoverall" class="invisible">
       <div class="circleball"></div>
-      <div id="myloading" class="loadtext">loading...</div>
+      <div id="myloading" class="loadtext">loading...<span class="loadcount"></span></div>
     </div>
     </div>
     <div class="vdiv">

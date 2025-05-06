@@ -179,6 +179,7 @@ class cellElem {
 async function wrapaccess(source, cell) {
   const isPrimary = cell.isPrimary(source);
   const start = performance.now();
+  let timer;
   if (isPrimary) {
     if (cell.isSelectable()) {
       const [x, y] = cell.location();
@@ -270,6 +271,28 @@ function suspendAnimation() {
     //console.log('suspend loading animation');
   }
 }
+// don't work in this thread
+/*
+async function startCountLoading(ldcnt) {
+  if (ldcnt === undefined) {
+    ldcnt = 1;
+  }
+  const loading = document.getElementById('myloading');
+  const event = () => {
+    ldcnt++;
+    console.log('conut up event', ldcnt);
+  }
+  let timer;
+  await new Promise((resolve_scl) => {
+    timer = setInterval(event, 1000);
+    resolve_scl();
+  });
+  return timer;
+}
+function removeCountLoading(timer) {
+  //clearInterval(timer);
+}
+*/
 function checkRemains() {
   // check all alive cells touched
   const cells = new untouchCellTask();
@@ -1973,6 +1996,7 @@ function generateBoardDataList(count, start_id) {
   return lists;
 }
 // doesn't work while await accessCell()
+/*
 async function countUpLoading(ldcnt) {
   // use as countUpLoading(+1);
   const layer = document.getElementById('mycoverall');
@@ -1981,7 +2005,9 @@ async function countUpLoading(ldcnt) {
   console.log('invisible', isInvisible, 'ldcnt', ldcnt);
   await repaint();
   if (!isInvisible) {
-    const newtext = loading.innerText.replace(/\s+.*/, '') + ` ${ldcnt}`;
+*/
+//    const newtext = loading.innerText.replace(/\s+.*/, '') + ` ${ldcnt}`;
+/*
     loading.innerText = newtext;
     console.log('innerText', loading.innerText);
     return new Promise((resolve_cul) => {
@@ -1993,3 +2019,4 @@ async function countUpLoading(ldcnt) {
     });
   }
 }
+*/
