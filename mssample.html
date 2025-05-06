@@ -122,6 +122,7 @@
       .loadtext {
         position: absolute;
         opacity: 0;
+        text-align: center;
         animation: 2s linear 0.5s blink infinite;
         /* duration timing-function delay iteration-count ... keyframes-name */
         /*
@@ -137,9 +138,10 @@
       .loadcount {
         counter-set: elapsed var(--count);
         animation: 3600s linear 0s infinite countup;
+        animation-fill-mode: forwards;
       }
       .loadcount::after {
-        content: counter(elapsed) "sec";
+        content: counter(elapsed) " sec";
       }
       @keyframes countup {
         0% { --count: 0; }
@@ -233,7 +235,7 @@
   <body>
     <div id="mycoverall" class="invisible">
       <div class="circleball"></div>
-      <div id="myloading" class="loadtext">loading...<span class="loadcount"></span></div>
+      <div id="myloading" class="loadtext">loading...<BR><span class="loadcount"></span></div>
     </div>
     </div>
     <div class="vdiv">

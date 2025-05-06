@@ -227,7 +227,6 @@ async function redraw() {
 }
 async function loadingAnimation(resolve_loading) {
   createAnimation();
-  // redraw
   await redraw();
   //console.log('start loading animation');
   resolve_loading();
@@ -1059,12 +1058,18 @@ function checkCellListFile(fileData) {
 }
 async function runCellListFile(fileData) {
   const clfile = new cellListFile(fileData);
+  const redrawInterval = 20;
   let readEnable = true;
+  let redCnt = 0;
   while ((clfile.lines.length > 0) && readEnable) {
     const cldata = new cellList(clfile.popData());
     const bdname = clfile.boardName();
     const ret = await evalCellList(bdname, cldata);
     //console.log('await return', ret);
+    if (redCnt-- <= 0) {
+      await redraw();
+      redCnt = redrawInterval;
+    }
     if (!ret) {
       // aborted
       readEnable = false;
