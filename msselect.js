@@ -102,21 +102,33 @@ class cellElem {
   }
   putQueue(reserveList) {
     this.queue = [];
-    //const reserve = {index:index, source:source}
-    for (let i=0; i < reserveList.length; i++) {
-      const reserve = reserveList[i];
-      this.queue.push(reserve);
+    if (reserveList !== undefined) {
+      this.queue = [...reserveList];
     }
+    // reserve = {index:index, source:source}
     return this;
   }
   evalQueue() {
     const SOURCE_KEEP_ALL_RECURSIVE_CELLS = 0;
+    const QUIET = 1;
+    const showMsg = (stage) => {
+      if (!QUIET) {
+        console.log(stage, this.index);
+      }
+    }
     let newList = [];
     for (let i=0; i < this.queue.length; i++) {
       const reserve = this.queue[i];
+      showMsg(`reserve ${i} is (${reserve.index}, ${reserve.source}) of`);
       const adjCell = new cellElem(reserve.index, this.list);
-      const curSrc = (SOURCE_KEEP_ALL_RECURSIVE_CELLS) ? reserve.source : reserve.source.slice(0,1);
-      const newSrc = curSrc.concat([this.index]);
+      const newSrc = reserve.source;
+      if (!SOURCE_KEEP_ALL_RECURSIVE_CELLS) {
+        const rem = newSrc.length -2;
+        // preserve only top and tail items
+        // ['primary', 1, 2, 3] -> ['primary', 3]
+        newSrc.splice(1, rem);
+      }
+      showMsg(`new source ${i} is ${newSrc} of`);
       adjCell.access(newSrc);
       // new pivot cells are collected and update this primary cell queue after all pivot cells are accessed
       for (let j=0; j < adjCell.queue.length; j++) {
@@ -124,6 +136,7 @@ class cellElem {
       }
     }
     // update queue
+    // if no newList, remove current queue
     this.putQueue(newList);
     return this;
   }
@@ -165,6 +178,7 @@ class cellElem {
 }
 async function wrapaccess(source, cell) {
   const isPrimary = cell.isPrimary(source);
+  const start = performance.now();
   if (isPrimary) {
     if (cell.isSelectable()) {
       const [x, y] = cell.location();
@@ -187,10 +201,10 @@ async function wrapaccess(source, cell) {
           cell.evalQueue();
         }
       }
-      if (isPrimary) {
-        checkRemains();
-        removeAnimation();
-      }
+      // after accessCell
+      checkRemains();
+      removeAnimation();
+      showElapsed(start);
       resolve_wa2();
     });
   } else {
@@ -201,10 +215,7 @@ async function wrapaccess(source, cell) {
 }
 // don't wait cell access finished
 function cellAccessPrimary(cell, event) {
-  const start = performance.now();
   cell.access(['primary']);
-  const end = performance.now();
-  showElapsed(start, end);
 }
 async function redraw() {
   for (let i = 0; i < 2; i++) {
@@ -322,7 +333,7 @@ function printFUstatus() {
   let msg = FLAG_UPDATE ? 'on' : 'off';
   statusBox.value = msg;  
   // print to console
-  printConsole(`flag ${msg}`);
+  //printConsole(`flag ${msg}`);
 }
 function printRemains(msg) {
   const remainsBox = document.getElementById('myremains');
@@ -383,13 +394,17 @@ async function accessCell(index, cellElemArray, cell, source) {
     if (cell.isEmpty()) {
       showMsg('empty');
       // pivot to expand reagion
-      const pbtcells = new pibotCellList(cell, source);
+      // source is updated to 'new source' by appending current index
+      const pbtcells = new pibotCellList(cell, source.concat([index]));
       const pbtIndex = pbtcells.region().regionShrink().pivotLocation().pivotIndex();
       // put pivot cells index to current cell queue
       cell.putQueue(pbtIndex);
+      const idxlist = cell.queue.map((x) => {return x.index});
+      const srclist = cell.queue.map((x) => {return x.source});
+      showMsg(`${idxlist} is index queue of`);
+      showMsg(`${srclist} is source queue of`);
       if (USE_PIVOT_QUEUE) {
         // cell.queue has reserve list (index, source)
-        //showMsg('queue', index, cell.queue);
       } else {
         cell.evalQueue();
       }
@@ -1037,12 +1052,20 @@ async function runCellListFile(fileData) {
     }
   }
 }
-function showElapsed(start, end) {
+async function showElapsed(start, wait) {
   const SHOW_MIN = 1;
-  const elapsed = parseInt(parseInt(end - start) / 100) /10;
-  if (elapsed > SHOW_MIN) {
-    printConsole(`elapsed ${elapsed} sec`);
+  if (wait === undefined) {
+    wait = SHOW_MIN;
   }
+  await new Promise((resolve_se) => {
+    const end = performance.now();
+    const elapsed = parseInt(parseInt(end - start) / 100) /10;
+    // print message larger than wait
+    if (elapsed > wait) {
+      printConsole(`elapsed ${elapsed} sec`);
+    }
+    resolve_se();
+  });
 }
 async function readCellListFile(fileName) {
   // 'this' is binded to reader
@@ -1057,8 +1080,7 @@ async function readCellListFile(fileName) {
   await redraw();
   await runCellListFile(fileData);
   suspendAnimation();
-  const end = performance.now();
-  showElapsed(start, end);
+  showElapsed(start);
   return true;
 }
 function loadLastBoardandMergeRoot(bdroot) {
