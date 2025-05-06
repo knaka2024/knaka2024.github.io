@@ -145,9 +145,9 @@ class cellElem {
     const isPrimary = this.isPrimary(source);
     if (isPrimary) {
       (async () => {
-        await new Promise((resolve) => {
+        await new Promise((resolve_acc) => {
           wrapaccess(source, this);
-          resolve();
+          resolve_acc();
         });
       })();
     } else {
@@ -172,12 +172,12 @@ async function wrapaccess(source, cell) {
     }
   }
   if (isPrimary) {
-    await new Promise((resolve2) => {
-      loadingAnimation(resolve2);
+    await new Promise((resolve_wa1) => {
+      loadingAnimation(resolve_wa1);
     });
   }
   if (isPrimary) {
-    await new Promise((resolve3) => {
+    await new Promise((resolve_wa2) => {
       accessCell(cell.index, cell.list, cell, source);
       // don't use recursive call to prevent promise stack overflow
       const USE_PIVOT_QUEUE = 1;
@@ -191,7 +191,7 @@ async function wrapaccess(source, cell) {
         checkRemains();
         removeAnimation();
       }
-      resolve3();
+      resolve_wa2();
     });
   } else {
     // don't use promise to prevent promise stack overflow
@@ -201,22 +201,62 @@ async function wrapaccess(source, cell) {
 }
 // don't wait cell access finished
 function cellAccessPrimary(cell, event) {
+  const start = performance.now();
   cell.access(['primary']);
+  const end = performance.now();
+  showElapsed(start, end);
 }
-async function loadingAnimation(resolve) {
-  createAnimation();
-  // repaint
+async function redraw() {
   for (let i = 0; i < 2; i++) {
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-  } 
+    await new Promise((resolve_redraw) => {
+      requestAnimationFrame(resolve_redraw);
+    });
+  }
+}
+async function loadingAnimation(resolve_loading) {
+  createAnimation();
+  // redraw
+  await redraw();
   //console.log('start loading animation');
-  resolve();
+  resolve_loading();
+}
+function createAnimation() {
+  const USE_CREATE_ELEMENT = 0;
+  if (USE_CREATE_ELEMENT) {
+    const layer = document.getElementById('mycoverall');
+    const div1 = document.createElement('div');
+    const div2 = document.createElement('div');
+    div1.className = 'circleball';
+    div2.className = 'loadtext';
+    div2.innerText = 'loading...';
+    div2.id = 'myloading';
+    layer.appendChild(div1);
+    layer.appendChild(div2);
+  } else {
+    const layer = document.getElementById('mycoverall');
+    layer.classList.remove('invisible');
+    //console.log('create animation');
+  }
 }
 function removeAnimation() {
   const layer = document.getElementById('mycoverall');
   if (layer != null) {
     layer.classList.add('invisible');
     //console.log('remove loading animation');
+  }
+}
+function extendAnimation() {
+  const layer = document.getElementById('mycoverall');
+  if (layer != null) {
+    layer.classList.add('extend');
+    //console.log('extend loading animation');
+  }
+}
+function suspendAnimation() {
+  const layer = document.getElementById('mycoverall');
+  if (layer != null) {
+    layer.classList.remove('extend');
+    //console.log('suspend loading animation');
   }
 }
 function checkRemains() {
@@ -917,7 +957,7 @@ class cellList {
       return true;
     }
   }
-  startSelection(resolve) {
+  startSelection(resolve_ss) {
     const board = document.getElementById('myboard');
     const cellElemLists = board.getElementsByTagName('td');
     const cellElemArray = [...cellElemLists];
@@ -927,7 +967,7 @@ class cellList {
         const cell = new cellElem(index, cellElemArray);
         await wrapaccess(['primary'], cell);
       }
-      resolve();
+      resolve_ss();
     })();
     return this;
   }
@@ -946,8 +986,8 @@ async function evalCellList(bdname, cldata) {
   if (BDROOT.idx(bdname) >= 0) {
     BDROOT.load(bdname);
     //console.log(bdname, 'cell list', cldata.locList);
-    await new Promise((resolve) => {
-      cldata.startSelection(resolve);
+    await new Promise((resolve_ecl) => {
+      cldata.startSelection(resolve_ecl);
     });
     cldata.evalBoard(bdname);
     return true;
@@ -979,12 +1019,7 @@ function checkCellListFile(fileData) {
   printConsole(`total ${bdc} board(s) found`);
   return true;
 }
-async function readCellListFile(fileName) {
-  // 'this' is binded to reader
-  const fileData = this.result;
-  if (!checkCellListFile(fileData)) {
-    return false;
-  }
+async function runCellListFile(fileData) {
   const clfile = new cellListFile(fileData);
   let readEnable = true;
   while ((clfile.lines.length > 0) && readEnable) {
@@ -1001,6 +1036,29 @@ async function readCellListFile(fileName) {
       readEnable = false;
     }
   }
+}
+function showElapsed(start, end) {
+  const SHOW_MIN = 1;
+  const elapsed = parseInt(parseInt(end - start) / 100) /10;
+  if (elapsed > SHOW_MIN) {
+    printConsole(`elapsed ${elapsed} sec`);
+  }
+}
+async function readCellListFile(fileName) {
+  // 'this' is binded to reader
+  const fileData = this.result;
+  const start = performance.now();
+  printConsole(`checking ${fileName} contents`);
+  await redraw();
+  if (!checkCellListFile(fileData)) {
+    return false;
+  }
+  extendAnimation();
+  await redraw();
+  await runCellListFile(fileData);
+  suspendAnimation();
+  const end = performance.now();
+  showElapsed(start, end);
   return true;
 }
 function loadLastBoardandMergeRoot(bdroot) {
@@ -1892,24 +1950,6 @@ function generateBoardDataList(count, start_id) {
   }
   return lists;
 }
-function createAnimation() {
-  const USE_CREATE_ELEMENT = 0;
-  if (USE_CREATE_ELEMENT) {
-    const layer = document.getElementById('mycoverall');
-    const div1 = document.createElement('div');
-    const div2 = document.createElement('div');
-    div1.className = 'circleball';
-    div2.className = 'loadtext';
-    div2.innerText = 'loading...';
-    div2.id = 'myloading';
-    layer.appendChild(div1);
-    layer.appendChild(div2);
-  } else {
-    const layer = document.getElementById('mycoverall');
-    layer.classList.remove('invisible');
-    //console.log('create animation');
-  }
-}
 // doesn't work while await accessCell()
 async function countUpLoading(ldcnt) {
   // use as countUpLoading(+1);
@@ -1922,11 +1962,11 @@ async function countUpLoading(ldcnt) {
     const newtext = loading.innerText.replace(/\s+.*/, '') + ` ${ldcnt}`;
     loading.innerText = newtext;
     console.log('innerText', loading.innerText);
-    return new Promise((resolve) => {
+    return new Promise((resolve_cul) => {
       setTimeout(() => {
         let int = Number(ldcnt) +1;
         countUpLoading(int);
-        resolve();
+        resolve_cul();
       }, 1000);
     });
   }
