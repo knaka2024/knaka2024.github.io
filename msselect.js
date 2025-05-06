@@ -648,11 +648,11 @@ class Board {
   new_size_mines(step) {
     const SIZE_XY_LOWER = 4;
     const SIZE_XY_UPPER = 20;
-    const MINES_RATIO_LOWER = 0.25;
-    const MINES_RATIO_UPPER = 0.50;
-    const SIZE_X_SLICE = 40;
-    const SIZE_Y_SLICE = 20;
-    const MINES_SLICE = 10;
+    const MINES_RATIO_LOWER = 0.1; // = 1/10
+    const MINES_RATIO_UPPER = 0.3; // = 3/10
+    const SIZE_X_SLICE = 41;
+    const SIZE_Y_SLICE = 23;
+    const MINES_SLICE = 11;
     const swvar_x = new swingVar(SIZE_X_SLICE);
     const swvar_y = new swingVar(SIZE_Y_SLICE);
     const swvar_m = new swingVar(MINES_SLICE);
@@ -697,6 +697,7 @@ class swingVar {
     this.omega = 2.0 * Math.PI / step_per_cycle;
     this.swing = 0.0;
     this.value0 = 0.0;
+    this.theta0 = - Math.PI / 2;
   }
   range(upper, lower) {
     this.swing = Math.abs(upper - lower) / 2.0;
@@ -704,7 +705,7 @@ class swingVar {
     return this;
   }
   step(step) {
-    const value = this.swing * Math.sin(this.omega * step) + this.value0;
+    const value = this.swing * Math.sin(this.omega * step + this.theta0) + this.value0;
     return value;
   }
 }
@@ -1033,7 +1034,7 @@ async function evalCellList(bdname, cldata) {
     return false;
   }
 }
-function checkCellListFile(fileData) {
+function checkCellListFile(fileData, prop) {
   const clfile = new cellListFile(fileData);
   let bdc = 0;
   while (clfile.lines.length > 0) {
@@ -1054,21 +1055,37 @@ function checkCellListFile(fileData) {
     }
   }
   printConsole(`total ${bdc} board(s) found`);
+  prop.bdc = bdc;
   return true;
 }
-async function runCellListFile(fileData) {
+function redrawInterval(step) {
+  const MAX_INTVAL = 50;
+  const STEP_COEF = 0.5;
+  // abs(INIT_TAN / STEP_COEF) = MAX_INTVAL/2 point step
+  // step == 0 is tan(x) = INIT_TAN
+  const INIT_TAN = -3;
+  // full swing is PI/2 * 2 = PI
+  const nom_swing = 1/Math.PI;
+  const tan = STEP_COEF * step + INIT_TAN;
+  return parseInt(MAX_INTVAL * nom_swing * (Math.atan(tan) + Math.PI/2));
+}
+async function runCellListFile(fileData, prop) {
   const clfile = new cellListFile(fileData);
-  const redrawInterval = 20;
   let readEnable = true;
+  let redStep = 1;
   let redCnt = 0;
+  let bdc = 0;
   while ((clfile.lines.length > 0) && readEnable) {
     const cldata = new cellList(clfile.popData());
     const bdname = clfile.boardName();
     const ret = await evalCellList(bdname, cldata);
-    //console.log('await return', ret);
+    bdc++;
+   //console.log('await return', ret);
     if (redCnt-- <= 0) {
+      const bdp = parseInt(bdc/prop.bdc * 100);
+      printConsole(`${bdc}/${prop.bdc} (${bdp}%) done`);
       await redraw();
-      redCnt = redrawInterval;
+      redCnt = redrawInterval(redStep++);
     }
     if (!ret) {
       // aborted
@@ -1099,14 +1116,16 @@ async function readCellListFile(fileName) {
   // 'this' is binded to reader
   const fileData = this.result;
   const start = performance.now();
+  let prop = new Object();
   printConsole(`checking ${fileName} contents`);
   await redraw();
-  if (!checkCellListFile(fileData)) {
+  if (!checkCellListFile(fileData, prop)) {
     return false;
   }
+  //console.log('board count', prop.bdc);
   extendAnimation();
   await redraw();
-  await runCellListFile(fileData);
+  await runCellListFile(fileData, prop);
   suspendAnimation();
   showElapsed(start);
   return true;
@@ -1970,14 +1989,22 @@ function createParamBoard(step, rand) {
   return lines;
 }
 function generateBoardDataPack(count, start_id) {
+  const USE_RANDOM_STEP = 1;
+  const STEP_RANGE = 7;
+  const step_rand = new randomparam();
   const rand = BOARD_RAND;
   if (start_id === undefined) {
     start_id = 1;
   }
   rand.seek(start_id);
   let lines = [];
+  let step = 0;
   for (let i=0; i < count; i++) {
-    const step = i;
+    if (USE_RANDOM_STEP) {
+      step = step + 1 + parseInt(STEP_RANGE * step_rand.next());
+    } else {
+      step = STEP_RANGE * i;
+    }
     const newlines = createParamBoard(step, rand);
     const newdata = newlines.join('\n') + '\n';
     lines.push(newdata);
