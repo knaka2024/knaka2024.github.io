@@ -5,7 +5,9 @@ class cellElemNode {
     this.innerText = value;
   }
 }
+//
 // HTML table cell element
+//
 class cellElem {
   constructor(index, elemList) {
     // array pointer
@@ -530,7 +532,9 @@ class pibotCellList {
     return plist;
   }
 }
+//
 // define board bank
+//
 class Board {
   constructor() {
     this.nameList = [];
@@ -634,22 +638,28 @@ class Board {
     this.check_lines(lines);
     return [...lines];
   }
-  new_board(x, y, m, id) {
+  new_board(x, y, m, iterate, safeCellLoc) {
     const rand = BOARD_RAND;
-    if (id === undefined) {
+    if (iterate === undefined) {
       rand.use_last_record();
+    } else if (iterate == 0) {
+      rand.use_current();
     } else {
-      rand.seek(id);
-      //console.log('new board id', id, 'found rand iterate (should be id-1)', rand.iterate);
+      // iterate should be >= 1 (rand.seek(0) is equal to rand.seek(1))
+      rand.seek(iterate);
+      //console.log('new board iterate', iterate, 'found rand iterate (should be iterate-1)', rand.iterate);
     }
-    this.boardData = generateBoardData(x, y, m, rand);
+    this.boardData = generateBoardData(x, y, m, rand, safeCellLoc);
     return this;
   }
   new_size_mines(step) {
+    const bdcfg = getBoardConfig('mybdpackconfig');
+    const ratioLowerMap = {low: 0.05, middle: 0.08, high: 0.10, danger: 0.13, serious: 0.15, ultra: 0.18}
+    const ratioUpperMap = {low: 0.10, middle: 0.15, high: 0.20, danger: 0.25, serious: 0.30, ultra: 0.35}
     const SIZE_XY_LOWER = 4;
     const SIZE_XY_UPPER = 20;
-    const MINES_RATIO_LOWER = 0.1; // = 1/10
-    const MINES_RATIO_UPPER = 0.3; // = 3/10
+    const MINES_RATIO_LOWER = ratioLowerMap[bdcfg.minesRatio];
+    const MINES_RATIO_UPPER = ratioUpperMap[bdcfg.minesRatio];
     const SIZE_X_SLICE = 41;
     const SIZE_Y_SLICE = 23;
     const MINES_SLICE = 11;
@@ -721,47 +731,57 @@ function removeEmptyItems(array) {
 }
 function createSampleBoardSet() {
   const bdroot = new Board();
-  bdroot.new_board(4, 4, 2).push_tail();
-  bdroot.new_board(4, 4, 4).push_tail();
-  bdroot.new_board(5, 5, 3).push_tail();
-  bdroot.new_board(5, 5, 6).push_tail();
-  bdroot.new_board(7, 7, 6).push_tail();
-  bdroot.new_board(7, 7, 12).push_tail();
-  bdroot.new_board(8, 8, 8).push_tail();
-  bdroot.new_board(8, 8, 16).push_tail();
-  bdroot.new_board(9, 9, 10).push_tail();
-  bdroot.new_board(9, 9, 20).push_tail();
-  bdroot.new_board(9, 12, 13).push_tail();
-  bdroot.new_board(9, 12, 26).push_tail();
-  bdroot.new_board(9, 15, 16).push_tail();
-  bdroot.new_board(9, 15, 33).push_tail();
-  bdroot.new_board(10, 10, 12).push_tail();
-  bdroot.new_board(10, 10, 25).push_tail();
-  bdroot.new_board(13, 13, 21).push_tail();
-  bdroot.new_board(13, 13, 42).push_tail();
-  bdroot.new_board(16, 16, 32).push_tail();
-  bdroot.new_board(16, 16, 64).push_tail();
-  bdroot.new_board(17, 17, 36).push_tail();
-  bdroot.new_board(17, 17, 72).push_tail();
-  bdroot.new_board(10, 20, 30).push_tail();
-  bdroot.new_board(10, 20, 40).push_tail();
-  bdroot.new_board(10, 20, 50).push_tail();
-  bdroot.new_board(10, 20, 60).push_tail();
-  bdroot.new_board(10, 20, 70).push_tail();
+  const bdcfg = getBoardConfig('mybdconfig');
+  const iterate = undefined;
+  const propList = [];
+  // x, y, mines
+  propList.push([4, 4, 2]);
+  propList.push([4, 4, 4]);
+  propList.push([5, 5, 3]);
+  propList.push([5, 5, 6]);
+  propList.push([7, 7, 6]);
+  propList.push([7, 7, 12]);
+  propList.push([8, 8, 8]);
+  propList.push([8, 8, 16]);
+  propList.push([9, 9, 10]);
+  propList.push([9, 9, 20]);
+  propList.push([9, 12, 13]);
+  propList.push([9, 12, 26]);
+  propList.push([9, 15, 16]);
+  propList.push([9, 15, 33]);
+  propList.push([10, 10, 12]);
+  propList.push([10, 10, 25]);
+  propList.push([13, 13, 21]);
+  propList.push([13, 13, 42]);
+  propList.push([16, 16, 32]);
+  propList.push([16, 16, 64]);
+  propList.push([17, 17, 36]);
+  propList.push([17, 17, 72]);
+  propList.push([10, 20, 30]);
+  propList.push([10, 20, 40]);
+  propList.push([10, 20, 50]);
+  propList.push([10, 20, 60]);
+  propList.push([10, 20, 70]);
+  for (let i = 0; i < propList.length; i++) {
+    const argList = propList[i].concat([iterate, bdcfg.safeCellLoc]);
+      bdroot.new_board(...argList).push_tail();
+  }
   return bdroot;
 }
 function updateSampleBoardSet() {
   const bdroot = new Board();
-  const bdfile = new boardFile('','','');
+  const bdfile = new boardFile('');
+  const bdcfg = getBoardConfig('mybdconfig');
   // read all current BDROOT boards 
   for (let bdn = 0; bdn < BDROOT.nameList.length; bdn++) {
     const bdname = BDROOT.nameList[bdn];
     //console.log('current bdn', bdn, bdname);
     const bdprop = bdfile.boardProperty(bdname);
+    const iterate = undefined;
     if (bdprop === undefined) {
       printConsole(`skip ${bdname}`);
     } else {
-      bdroot.new_board(bdprop.x, bdprop.y, bdprop.mines).push_tail();
+      bdroot.new_board(bdprop.x, bdprop.y, bdprop.mines, iterate, bdcfg.safeCellLoc).push_tail();
     }
   }
   return bdroot;
@@ -797,15 +817,20 @@ function updateBoardSelector() {
   const bdsel = new BoardSelector();
   bdsel.clean().import(BDROOT);
 }
+//
+// board file
+//
 class boardFile {
-  constructor(fileData, fileName, boardId) {
-    //console.log('fileData',fileData,'fileName',fileName);
+  // filename, boardId, and safeCellLoc can be undefined
+  constructor(fileData, fileName, boardId, safeCellLoc) {
+    //console.log('fileData',fileData,'fileName',fileName, 'boardId', boardId, 'safeCellLoc', safeCellLoc);
     this.lines = removeEmptyItems(fileData.split(/\r\n|\n/));
-    this.fileName = (fileName == null) ? 'dummy' : fileName;
+    this.fileName = (fileName === undefined) ? 'dummy' : fileName;
     this.header = '';
-    this.fnidx = (boardId == null) ? 1 : boardId;
+    this.fnidx = (boardId === undefined) ? 1 : boardId;
     this.size = [];
     this.mines = 0;
+    this.safeCellLoc = (safeCellLoc === undefined) ? 'u' : safeCellLoc; // 'u' is unknown or undefined
   }
   isHeader() {
     return (this.lines[0].match(/^(\d+)[ ]+(\d+)/) == null) ? 0 : 1;
@@ -819,25 +844,30 @@ class boardFile {
     let fname = [];
     const itemList = this.header.split(/[ ]+/);
     if (itemList.length >= 3) {
+      // header is <size_x> <size_y> <boardName>
       fname.push(itemList[2]);
     } else {
+      // boardName is <size_x>x<size_y>_<mines>_<boardId>_<safeCellLoc>
       fname.push(this.baseFileName());
       fname.push(this.size.join('x'));
       fname.push(this.mines);
       fname.push(this.fnidx++);
+      fname.push(this.safeCellLoc);
     }
     return fname.join('_');;
   }
   boardProperty(bdname) {
-    // board_7x7_12_31
+    // board_7x7_12_31_a
     let propList = bdname.split(/[_x]/);
-    if (propList.length >= 5) {
+    if (propList.length >= 6) {
+      // id is iterate of rand
       const boardProp = {
         name: propList.shift(),
         x: propList.shift(),
         y: propList.shift(),
         mines: propList.shift(),
-        id: propList.shift()
+        id: propList.shift(),
+        safeCellLoc: propList.shift()
       }
       return boardProp;
     } else {
@@ -1048,9 +1078,15 @@ function checkCellListFile(fileData, prop) {
     bdc++;
     if (BDROOT.idx(bdname) < 0) {
       // generate board data
-      const bdfile = new boardFile('','','');
+      const bdfile = new boardFile('');
       const bdprop = bdfile.boardProperty(bdname);
-      BDROOT.new_board(bdprop.x, bdprop.y, bdprop.mines, bdprop.id).push_tail();
+      if (bdprop === undefined) {
+        printConsole(`#ER failed to generate ${bdname} board data, aborted`);
+        printConsole(`update board name format or input data file including ${bdname}`);
+        return false;
+      }
+      //console.log('new_board prop', bdprop);
+      BDROOT.new_board(bdprop.x, bdprop.y, bdprop.mines, bdprop.id, bdprop.safeCellLoc).push_tail();
       updateBoardSelector();
     }
   }
@@ -1072,8 +1108,8 @@ function redrawInterval(step) {
 async function runCellListFile(fileData, prop) {
   const clfile = new cellListFile(fileData);
   let readEnable = true;
-  let redStep = 1;
-  let redCnt = 0;
+  let redStep = 0;
+  let redCnt = redrawInterval(redStep++);
   let bdc = 0;
   while ((clfile.lines.length > 0) && readEnable) {
     const cldata = new cellList(clfile.popData());
@@ -1160,11 +1196,13 @@ function addFileLoadEventListener(reader, fileName, what) {
 }
 function createCustomBoard() {
   const bdroot = new Board();
+  const bdcfg = getBoardConfig('mybdconfig');
+  const iterate = undefined;
   const cstmx = document.getElementById('mycstmx');
   const cstmy = document.getElementById('mycstmy');
   const cstmm = document.getElementById('mycstmmines');
   if ((cstmx.value != '') && (cstmy.value != '') && (cstmm.value != '')) {
-    bdroot.new_board(cstmx.value, cstmy.value, cstmm.value).push_top();
+    bdroot.new_board(cstmx.value, cstmy.value, cstmm.value, iterate, bdcfg.safeCellLoc).push_top();
     //console.log('x', cstmx.value, 'y', cstmy.value, 'm', cstmm.value);
     const bdName = bdroot.first_name();
     printConsole(`create ${bdName}`);
@@ -1198,10 +1236,14 @@ function addSelectEventListener() {
     createCustomBoard();
   });
 }
-function getBoardConfig() {
+// formid is mybdconfig or mybdpackconfig
+function getBoardConfig(formid) {
   // CSS selector = #<id_name>
-  const bdconfig = document.querySelector('#mybdconfig').bdconfig.value;
-  //console.log('bdconfig', bdconfig);
+  const confForm = document.querySelector(`#${formid}`);
+  const safeCellLoc = (confForm.bdsafe !== undefined) ? confForm.bdsafe.value : 'auto';
+  const minesRatio = (confForm.bdmsratio !== undefined) ? confForm.bdmsratio.value : 'middle';
+  const bdconfig = {safeCellLoc: safeCellLoc, minesRatio: minesRatio}
+  console.log('bdconfig', formid, bdconfig);
   return bdconfig;
 }
 function getReadListConfig() {
@@ -1216,12 +1258,12 @@ function getBoardPackSize() {
   return bdcount;
 }
 function resetBoardForm() {
-  const resetForm = document.getElementById('myform');
+  const resetForm = document.getElementById('mybdplay');
   resetForm.reset();
 }
 // reset event listener is defined in html when start-up
 function addResetEventListener() {
-  //const resetForm = document.getElementById('myform');
+  //const resetForm = document.getElementById('mybdplay');
   //resetForm.addEventListener('reset', function(event) {
   const resetBtn = document.getElementById('myreset');
   resetBtn.addEventListener('click', function(){
@@ -1319,18 +1361,20 @@ function downloadSummary(statusBox, event) {
   const fname = `score_summary_${datetime}.csv`
   downloadText(text, statusBox, fname);
 }
+function boardPackName(data) {
+  const bdc = getBoardPackSize();
+  const bdcfg = getBoardConfig('mybdpackconfig');
+  const fname = `board_${data}_${bdc}_${bdcfg.safeCellLoc}_${bdcfg.minesRatio}.txt`;
+  return fname;
+}
 function downloadPack(statusBox, event) {
   const text = fetchBoardDataPack();
-  //console.log('text', text);
-  const bdc = getBoardPackSize();
-  const fname = `board_pack_${bdc}.txt`
+  const fname = boardPackName('pack');
   downloadText(text, statusBox, fname);
 }
 function downloadList(statusBox, event) {
   const text = fetchBoardDataList();
-  //console.log('text', text);
-  const bdc = getBoardPackSize();
-  const fname = `board_list_${bdc}.txt`
+  const fname = boardPackName('list');
   downloadText(text, statusBox, fname);
 }
 // cell selection log download
@@ -1704,6 +1748,10 @@ class randomparam {
       //console.log('record (',this.hist.length,')', this.hist[0]);
     }
   }
+  use_current() {
+    // nothing done
+    return this;
+  }
   use_last_record() {
     if ((this.hist.length > 0) && (this.hist[0].iterate > this.iterate)) {
       this.use_record(0);
@@ -1806,14 +1854,13 @@ class safeZone {
       }
     }
   }
-  config() {
-    const BDCONFIG = getBoardConfig();
-    if (/auto/.test(BDCONFIG)) {
+  enable_safe_cell(safeCellLoc) {
+    if (/auto/.test(safeCellLoc)) {
       const oddBoard = ((this.prop.xs % 2) && (this.prop.ys % 2)) ? true : false;
       this.enable = {corner: !oddBoard, center: oddBoard}
     } else {
-      this.enable.corner = (/corner|both/.test(BDCONFIG)) ? true : false;
-      this.enable.center = (/center|both/.test(BDCONFIG)) ? true : false;
+      this.enable.corner = (/corner|both/.test(safeCellLoc)) ? true : false;
+      this.enable.center = (/center|both/.test(safeCellLoc)) ? true : false;
     }
   }
   points_corner() {
@@ -1867,7 +1914,7 @@ class safeZone {
     return this;
   }
 }
-function createSafeCells(size_x, size_y, mcount) {
+function createSafeCells(size_x, size_y, mcount, safeCellLoc) {
   // MINES : UNTOUCH = 1 : 1
   const USE_SAFECELL_MINE_RATIO_MIN = 1.0;
   // MINES : UNTOUCH = 1 : 2.5
@@ -1882,7 +1929,7 @@ function createSafeCells(size_x, size_y, mcount) {
   //                = cellSize - MINES * (1 + USE_ADJCELL_MINE_RATIO_MIN)
   const untouchCellMin2 = parseInt(mcount * USE_ADJCELL_MINE_RATIO_MIN);
   const sfz = new safeZone(size_x, size_y, mcount);
-  sfz.config();
+  sfz.enable_safe_cell(safeCellLoc);
 
   // corner SAFE_CELL
   sfz.untouch.min = untouchCellMin1;
@@ -1939,7 +1986,7 @@ function createCellElemArray(cellSize, mines) {
 }
 // generate board. return 'boardName' 'dataList...'
 // distroy SIZE_X and SIZE_Y
-function generateBoardData(size_x, size_y, minesCount, rand) {
+function generateBoardData(size_x, size_y, minesCount, rand, safeCellLoc) {
   // avoid mines to be put at 4-corner reagion
   const USE_SAFE_ZONE = 1;
   const MIN_SIZE = 2;
@@ -1952,7 +1999,7 @@ function generateBoardData(size_x, size_y, minesCount, rand) {
   const discard = rand.next();
   const boardId = rand.iterate;
   const cellSize = size_x * size_y;
-  const safeCell = USE_SAFE_ZONE ? createSafeCells(size_x, size_y, minesCount) : [];
+  const safeCell = USE_SAFE_ZONE ? createSafeCells(size_x, size_y, minesCount, safeCellLoc) : [];
   //console.log('safeCell', `${size_x}x${size_y}_${minesCount}`, getBoardConfig(), safeCell);
   const mines = createMines(rand, cellSize, minesCount, safeCell);
   //console.log('mines', mines);
@@ -1974,29 +2021,33 @@ function generateBoardData(size_x, size_y, minesCount, rand) {
       cellData += '\n';
     }
   }
-  const bdfile = new boardFile(cellData, 'board', boardId);
+  const bdfile = new boardFile(cellData, 'board', boardId, safeCellLoc);
   const boardData=bdfile.popData();
   //console.log(boardData);
   //return [...boardData];
   return boardData;
 }
-function createParamBoard(step, rand) {
+function createParamBoard(step, bdconfig) {
   const bdroot = new Board();
   const prop = bdroot.new_size_mines(step);
-  bdroot.new_board(prop.xs, prop.ys, prop.ms, rand).push_top();
+  // iterate 0 means to use current iterate following previous
+  const iterate = 0;
+  bdroot.new_board(prop.xs, prop.ys, prop.ms, iterate, bdconfig.safeCellLoc).push_top();
   const bdName = bdroot.first_name();
   const lines = bdroot.get_data(bdName);
   return lines;
 }
-function generateBoardDataPack(count, start_id) {
+function generateBoardDataPack(count, start_iterate) {
   const USE_RANDOM_STEP = 1;
   const STEP_RANGE = 7;
   const step_rand = new randomparam();
   const rand = BOARD_RAND;
-  if (start_id === undefined) {
-    start_id = 1;
+  // use different bdconfig from playing form mybdplay which uses mybdconfig
+  const bdcfg = getBoardConfig('mybdpackconfig');
+  if (start_iterate === undefined) {
+    start_iterate = 1;
   }
-  rand.seek(start_id);
+  rand.seek(start_iterate);
   let lines = [];
   let step = 0;
   for (let i=0; i < count; i++) {
@@ -2005,16 +2056,16 @@ function generateBoardDataPack(count, start_id) {
     } else {
       step = STEP_RANGE * i;
     }
-    const newlines = createParamBoard(step, rand);
+    const newlines = createParamBoard(step, bdcfg);
     const newdata = newlines.join('\n') + '\n';
     lines.push(newdata);
   }
   return lines;
 }
-function generateBoardDataList(count, start_id) {
+function generateBoardDataList(count, start_iterate) {
   let USE_HEADER = 1;
   let lists = [];
-  const lines = generateBoardDataPack(count, start_id);
+  const lines = generateBoardDataPack(count, start_iterate);
   for (let i=0; i < lines.length; i++) {
     const bdfile = new boardFile(lines[i]);
     bdfile.popData();

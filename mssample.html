@@ -263,11 +263,11 @@
       <form id="mybdconfig">
         <div class="hdiv">
           <label class="box">安全セルの設定：</label>
-          <label class="checkbox"><input type="radio" name="bdconfig" value="auto" checked/>auto</label>
-          <label class="checkbox"><input type="radio" name="bdconfig" value="corner"/>corner</label>
-          <label class="checkbox"><input type="radio" name="bdconfig" value="center"/>center</label>
-          <label class="checkbox"><input type="radio" name="bdconfig" value="both"/>both</label>
-          <label class="checkbox"><input type="radio" name="bdconfig" value="none"/>none</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="auto" checked/>auto</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="corner"/>corner</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="center"/>center</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="both"/>both</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="none"/>none</label>
           <button type="button" id="myselectreconfig" class="checkbox">update sample</button>      
         </div>
         <div class="hdiv">
@@ -290,8 +290,8 @@
         <label class="box">盤面データ表示切替：</label>
         <button type="button" id="mytoggle" class="checkbox" onclick="toggleVisibility()">ON/OFF</button>
       </div>
-      <form id="myform">
-        <!-- reset effective form region begin -->
+      <form id="mybdplay">
+        <!-- reset effective mybdplay form region begin -->
         <div class="hdiv">
           <label class="box">旗を立てる：</label>
           <button type="button" id="myflag" class="checkbox" onclick="flagUpdate('toggle')">Flag ON/OFF</button>
@@ -341,6 +341,9 @@
           <output id="mydownloadsummarystatus" class="checkbox">none</output>
         </div>        
         <hr>
+        <!-- reset effective mybdplay form region end -->
+      </form>
+      <form id="mybdpackconfig">
         <div class="hdiv">
           <label class="smallbox">（お試し運用中）</label>
         </div>        
@@ -350,6 +353,31 @@
           <input type="number" id="mybdcount" class="checkbox widenumbox" min="10" step="10" value="10"/>
         </div>
         <div class="hdiv">
+          <label class="box">安全セルの設定：</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="auto" checked/>auto</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="corner"/>corner</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="center"/>center</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="both"/>both</label>
+          <label class="checkbox"><input type="radio" name="bdsafe" value="none"/>none</label>
+        </div>
+        <div class="hdiv">
+          <label class="box">難易度：爆弾の比率：</label>
+          <label class="checkbox"><input type="radio" name="bdmsratio" value="low" checked/>low</label>
+          <label class="checkbox smallbox">(5 - 10%)</label>
+          <label class="checkbox"><input type="radio" name="bdmsratio" value="middle"/>middle</label>
+          <label class="checkbox smallbox">(8 - 15%)</label>
+          <label class="checkbox"><input type="radio" name="bdmsratio" value="high"/>high</label>
+          <label class="checkbox smallbox">(10 - 20%)</label>
+        </div>
+        <div class="hdiv">
+          <label class="box">　　　　　　　　　　</label>
+          <label class="checkbox"><input type="radio" name="bdmsratio" value="danger"/>danger</label>
+          <label class="checkbox smallbox">(13 - 25%)</label>
+          <label class="checkbox"><input type="radio" name="bdmsratio" value="serious"/>serious</label>
+          <label class="checkbox smallbox">(15 - 30%)</label>
+          <label class="checkbox"><input type="radio" name="bdmsratio" value="ultra"/>ultra</label>
+          <label class="checkbox smallbox">(18 - 35%)</label>
+        </div>        <div class="hdiv">
           <label class="box">　　データ　　：</label>
           <button type="button" id="mydownloadpack" class="checkbox">download board data pack</button>
           <output id="mydownloadpackstatus" class="checkbox">none</output>
@@ -360,19 +388,19 @@
           <output id="mydownloadliststatus" class="checkbox">none</output>
         </div>
         <hr>
-        <!-- reset effective form region end -->
       </form>
-      <form>
-      <div class="hdiv">
-        <table class="summarybox">
-          <tr>
-            <td class="top">スコア・サマリ：</td>
-            <td><table id="mysummary" class="mssummary top"></table></td>
-          </tr>
-        </table>
-      </div>
+      <form id="mybdscore">
+        <div class="hdiv">
+          <table class="summarybox">
+            <tr>
+              <td class="top">スコア・サマリ：</td>
+              <td><table id="mysummary" class="mssummary top"></table></td>
+            </tr>
+          </table>
+        </div>
+        <hr>
       </form>
-      <div class="right smallbox">DA シンポジウム 2025 version 2025/5/6</div>
+      <div class="right smallbox">DA シンポジウム 2025 version 2025/5/10</div>
     </div>
     <script>
       createBoardSelector();
