@@ -654,8 +654,8 @@ class Board {
   }
   new_size_mines(step) {
     const bdcfg = getBoardConfig('mybdpackconfig');
-    const ratioLowerMap = {low: 0.05, middle: 0.08, high: 0.10, danger: 0.13, serious: 0.15, ultra: 0.18}
-    const ratioUpperMap = {low: 0.10, middle: 0.15, high: 0.20, danger: 0.25, serious: 0.30, ultra: 0.35}
+    const ratioLowerMap = {low: 0.05, middle: 0.08, high: 0.10, dangerous: 0.13, serious: 0.15, ultra: 0.18}
+    const ratioUpperMap = {low: 0.10, middle: 0.15, high: 0.20, dangerous: 0.25, serious: 0.30, ultra: 0.35}
     const SIZE_XY_LOWER = 4;
     const SIZE_XY_UPPER = 20;
     const MINES_RATIO_LOWER = ratioLowerMap[bdcfg.minesRatio];
