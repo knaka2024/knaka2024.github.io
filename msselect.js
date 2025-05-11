@@ -871,6 +871,13 @@ class boardFile {
       fname.push(this.fnidx++);
       fname.push(this.safeCellLoc);
     }
+    // check board name
+    if (!/^[a-z]/g.test(fname[0])) {
+      printConsole(`#ER board name format error: ${fname[0]}`);
+    }
+    if (/^[0-9]/.test(fname[0])) {
+      printConsole(`#ER board name should not start 0-9 char: ${fname[0]}`);
+    }
     return fname.join('_');;
   }
   boardProperty(bdname) {
@@ -1017,7 +1024,10 @@ class cellListFile extends boardFile {
   }
 }
 class cellList {
-  constructor(lines) {
+  constructor(lines, bdsize) {
+    if (bdsize !== undefined) {
+      this.size = {x: bdsize[0], y:bdsize[1]};
+    }
     this.locList = [];
     while (lines.length > 0) {
       const eachline = lines.shift();
@@ -1025,14 +1035,34 @@ class cellList {
       //console.log('itemList', itemList);
       if (itemList.length >= 2) {
         const loc = {x:Number(itemList[0]), y:Number(itemList[1])}
+        if (bdsize !== undefined) {
+          if (!this.check_loc(loc)) {
+            this.locList = undefined;
+            printConsole('#ER location range error');
+            break;
+          }
+        }
         this.locList.push(loc);
       } else {
-        printConsole(`#ER cell list format error ${eachline}`);
+        printConsole(`#ER cell list format error: ${eachline}`);
+        printConsole('#ER location should be two items <x> <y>');
         // break and clear locList
         this.locList = undefined;
         break;
       }
     }
+  }
+  check_loc(loc) {
+    const ret = ['x', 'y'].find((xy) => {
+      if (!this.check_loc_xy(loc, xy)) {
+        printConsole(`#ER <${xy}> out of range: (${loc.x}, ${loc.y})`);
+        return true;
+      }
+    });
+    return (ret === undefined);
+  }
+  check_loc_xy(loc, xy) {
+    return ((/^[0-9]+$/.test(loc[xy])) && (loc[xy] >= 0) && (loc[xy] < this.size[xy])) ? true:false;
   }
   continue_or_finish() {
     const RDCONFIG = getReadListConfig();
@@ -1087,7 +1117,9 @@ function checkCellListFile(fileData, prop) {
   //let pgCnt = SHOW_PROGRESS_MIN;
   let bdc = 0;
   while (clfile.lines.length > 0) {
-    const cldata = new cellList(clfile.popData());
+    const cellListData = clfile.popData();
+    const bdsize = clfile.boardSize();
+    const cldata = new cellList(cellListData, bdsize);
     const bdname = clfile.boardName();
     if (cldata.locList === undefined) {
       printConsole(`#ER failed to read ${bdname} cell list, aborted`);
@@ -1141,8 +1173,10 @@ async function runCellListFile(fileData, prop) {
   let redCnt = redrawInterval(redStep++);
   let bdc = 0;
   while ((clfile.lines.length > 0) && readEnable) {
-    const cldata = new cellList(clfile.popData());
+    const cellListData = clfile.popData();
+    const cldata = new cellList(cellListData);
     const bdname = clfile.boardName();
+    console.log('bdname', bdname);
     const ret = await evalCellList(bdname, cldata);
     bdc++;
    //console.log('await return', ret);
