@@ -660,6 +660,7 @@ class Board {
     const SIZE_XY_UPPER = 20;
     const MINES_RATIO_LOWER = ratioLowerMap[bdcfg.minesRatio];
     const MINES_RATIO_UPPER = ratioUpperMap[bdcfg.minesRatio];
+    const MINES_LOWEST = 3;
     const SIZE_X_SLICE = 41;
     const SIZE_Y_SLICE = 23;
     const MINES_SLICE = 11;
@@ -677,6 +678,10 @@ class Board {
       xs: parseInt(size_x),
       ys: parseInt(size_y),
       ms: parseInt(mines)
+    }
+    // avoid too small mines
+    if (prop.ms < MINES_LOWEST) {
+      prop.ms = MINES_LOWEST;
     }
     return prop;
   }
@@ -718,6 +723,18 @@ class swingVar {
     const value = this.swing * Math.sin(this.omega * step + this.theta0) + this.value0;
     return value;
   }
+}
+function checkSwingVar(step_per_cycle, loopMax) {
+  const swvar = new swingVar(step_per_cycle);
+  let asin0 = 0;
+  for (let i = 0; i < loopMax; i++) {
+    const value = swvar.range(10, 20).step(i);
+    const sin = (value - 15) / 5;
+    const asin = Math.asin(sin)/Math.PI;
+    const dasin = asin - asin0;
+    asin0 = asin;
+    console.log(i, value, parseInt(asin*1000)/10, parseInt(dasin*1000)/10);
+  }  
 }
 function removeEmptyItems(array) {
   let newarray = [];
@@ -1065,7 +1082,9 @@ async function evalCellList(bdname, cldata) {
   }
 }
 function checkCellListFile(fileData, prop) {
+  const SHOW_PROGRESS_MIN = 400;
   const clfile = new cellListFile(fileData);
+  //let pgCnt = SHOW_PROGRESS_MIN;
   let bdc = 0;
   while (clfile.lines.length > 0) {
     const cldata = new cellList(clfile.popData());
@@ -1074,8 +1093,14 @@ function checkCellListFile(fileData, prop) {
       printConsole(`#ER failed to read ${bdname} cell list, aborted`);
       return false;
     }
-    printConsole(`found ${bdname} cell list`);
+    //printConsole(`found ${bdname} cell list`);
     bdc++;
+    /*
+    if (pgCnt-- <= 0) {
+      printConsole(`${bdc} boards found, still reading...`);
+      pgCnt = SHOW_PROGRESS_MIN;
+    }
+    */
     if (BDROOT.idx(bdname) < 0) {
       // generate board data
       const bdfile = new boardFile('');
@@ -1105,6 +1130,10 @@ function redrawInterval(step) {
   const tan = STEP_COEF * step + INIT_TAN;
   return parseInt(MAX_INTVAL * nom_swing * (Math.atan(tan) + Math.PI/2));
 }
+function printProgress(current, total) {
+  const percent = parseInt(current/total * 100);
+  printConsole(`${current}/${total} (${percent}%) done`);  
+}
 async function runCellListFile(fileData, prop) {
   const clfile = new cellListFile(fileData);
   let readEnable = true;
@@ -1118,8 +1147,7 @@ async function runCellListFile(fileData, prop) {
     bdc++;
    //console.log('await return', ret);
     if (redCnt-- <= 0) {
-      const bdp = parseInt(bdc/prop.bdc * 100);
-      printConsole(`${bdc}/${prop.bdc} (${bdp}%) done`);
+      printProgress(bdc, prop.bdc);
       await redraw();
       redCnt = redrawInterval(redStep++);
     }
@@ -1241,9 +1269,9 @@ function getBoardConfig(formid) {
   // CSS selector = #<id_name>
   const confForm = document.querySelector(`#${formid}`);
   const safeCellLoc = (confForm.bdsafe !== undefined) ? confForm.bdsafe.value : 'auto';
-  const minesRatio = (confForm.bdmsratio !== undefined) ? confForm.bdmsratio.value : 'middle';
+  const minesRatio = (confForm.bdmsratio !== undefined) ? confForm.bdmsratio.value : 'low';
   const bdconfig = {safeCellLoc: safeCellLoc, minesRatio: minesRatio}
-  console.log('bdconfig', formid, bdconfig);
+  //console.log('bdconfig', formid, bdconfig);
   return bdconfig;
 }
 function getReadListConfig() {
