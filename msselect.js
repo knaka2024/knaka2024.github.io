@@ -1385,8 +1385,9 @@ function fetchSummary() {
   for (let row of table.rows) {
     let line = [];
     for(let cell of row.cells){
-      console.log(cell.innerText);
-      line.push(cell.innerText);
+      //console.log(cell.innerText);
+      const value = cell.innerText.replace(/\s+/g,'').replace(/\(.*\)/g,'');
+      line.push(value);
     }
     msg += line.join(',');
     msg += '\n';
