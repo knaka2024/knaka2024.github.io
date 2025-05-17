@@ -177,6 +177,16 @@ class cellElem {
       }
       return incr;
   }
+  hover() {
+    const [x, y] = this.location();
+    printLocation(x, y);
+  }
+  addEventListener() {
+    const bindedHandler1 = cellAccessPrimary.bind(this.node, this);
+    const bindedHandler2 = cellMouseHover.bind(this.node, this);
+    this.node.addEventListener('click', bindedHandler1, {once: true});  
+    this.node.addEventListener('mouseover', bindedHandler2);
+  }
 }
 async function wrapaccess(source, cell) {
   const isPrimary = cell.isPrimary(source);
@@ -216,9 +226,11 @@ async function wrapaccess(source, cell) {
     // new pivot cells are collected by cell.evalQueue of primary cell while loop
   }
 }
-// don't wait cell access finished
 function cellAccessPrimary(cell, event) {
   cell.access(['primary']);
+}
+function cellMouseHover(cell, event) {
+  cell.hover();
 }
 async function redraw() {
   for (let i = 0; i < 2; i++) {
@@ -365,6 +377,10 @@ function printRemains(msg) {
   // print to console
   //printConsole(`remaining ${msg}`);
 }
+function printLocation(x, y) {
+  const locationBox = document.getElementById('mylocation');
+  locationBox.value = `(${x}, ${y})`;
+}
 function countScore(cell, type) {
   let score = cell.score();
   let incr = 0;
@@ -397,11 +413,11 @@ async function accessCell(index, cellElemArray, cell, source) {
   if (cell.isTouch()) {
     showMsg('skip');
   } else if (FLAG_UPDATE) {
-    // enter flag on/off update mode
+    // reach here when flag on/off update mode enabled
     if (cell.isFlag()) {
       showMsg('flag off');
       cell.unflag();
-      addEachCellEventListener(cell);
+      cell.addEventListener();
     } else {
       showMsg('flag on');
       cell.flag();
@@ -1498,13 +1514,6 @@ function removeEventListener() {
     button.replaceWith(clonedCell);
   }
 }
-function addEachCellEventListener(cell) {
-  //const board = document.getElementById('myboard');
-  //const cellElemLists = board.getElementsByTagName('td');
-  // put event listener for flagged cells
-  const bindedHandler = cellAccessPrimary.bind(cell.node, cell);
-  cell.node.addEventListener('click', bindedHandler, {once: true});
-}
 function flagUpdate(task) {
   switch (task) {
     case 'init': FLAG_UPDATE = 0; break;
@@ -1540,8 +1549,7 @@ function addCellEventListener() {
     const cell = new cellElem(i, cellElemArray);
     // reset touch class from each cell
     cell.init();
-    const bindedHandler = cellAccessPrimary.bind(cell.node, cell);
-    cellElemArray[i].addEventListener('click', bindedHandler, {once: true});  
+    cell.addEventListener();
     /*
     cellElemArray[i].addEventListener('click', function(){
       // const cellElemArray = [...cellElemLists];
@@ -1657,8 +1665,8 @@ class untouchCellTask {
     const task = (cell) => {
       if (cell.isFlag()) {
         // put event listener for flagged cells
-        const bindedHandler = cellAccessPrimary.bind(cell.node, cell);
-        cell.node.addEventListener('click', bindedHandler, {once: true});
+        // listening event of removing flag
+        cell.addEventListener();
       }
     }
     return this.foreach(task);
@@ -1675,9 +1683,8 @@ class untouchCellTask {
     const task = (cell) => {
       //console.log('refresh', cell);
       if (!cell.isFlag()) {
-        // put event listener for flagged cells
-        const bindedHandler = cellAccessPrimary.bind(cell.node, cell);
-        cell.node.addEventListener('click', bindedHandler, {once: true});
+        // put event listener for un-flagged cells
+        cell.addEventListener();
       }
     }
     return this.foreach(task);

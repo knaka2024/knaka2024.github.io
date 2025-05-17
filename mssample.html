@@ -165,7 +165,8 @@
         border-bottom: 1px #333 dotted;
       }
       table.msboard {
-        margin-top: 2rem;
+        margin-top: 0rem;
+        margin-left: 0rem;        
       }
       .smallbox {
         font-size: 1.2rem;
@@ -309,14 +310,21 @@
           <table class="inlinebox">
             <tr><td class="box smallbox">セル選択ログ</td></tr>
             <tr><td>
-            <textarea id="mydialog" class="box scrollbox" placeholder="touch cell (x,y)" wrap="off"></textarea>
+              <textarea id="mydialog" class="box scrollbox" placeholder="touch cell (x,y)" wrap="off"></textarea>
             </td></tr>
             <tr><td class="box smallbox">スコア計算ログ</td></tr>
             <tr><td>
-            <textarea id="myscore" class="box scrollbox" placeholder="score count"></textarea>
+              <textarea id="myscore" class="box scrollbox" placeholder="score count"></textarea>
             </td></tr>
           </table>
-          <table id="myboard" class="msboard inlinebox"></table>
+          <table class="inlinebox">
+            <tr><td class="box smallbox">
+              座標：<output id="mylocation">location (x,y)</output>
+            </td></tr>
+            <tr><td>
+              <table id="myboard" class="msboard inlinebox"></table>
+            </td></tr>
+          </table>
         </div>
         <div class="hdiv">
           <label class="box">セル選択終了：</label>
@@ -400,7 +408,7 @@
         </div>
         <hr>
       </form>
-      <div class="right smallbox">DA シンポジウム 2025 version 2025/5/10</div>
+      <div class="right smallbox">DA シンポジウム 2025 version 2025/5/17</div>
     </div>
     <script>
       createBoardSelector();
