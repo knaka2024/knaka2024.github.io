@@ -176,7 +176,7 @@
 
 ## プログラム実行結果の提出について ![更新](images/update.PNG)
 - プログラム競技の結果を記載する Excel ファイルをダウンロードいただき、実行結果を記載いただきまして、das”at”sig-sldm.org より、ADC 事務局あてご連絡をいただければと思います。（”at”は@に変換してください）。
-### [結果を記載する Excel ファイル ＝＝＞ minesweeper_prog_result.xlsx](minesweeper_prog_result.xlsx) 
+### [結果を記載する Excel ファイル ＝＝＞ `minesweeper_prog_result.xlsx`](minesweeper_prog_result.xlsx) 
 - メール本文には「参加者入力フォーム」に記載いただいたお名前もしくはチーム名を明記してください。
 - 受領しましたら、ADC 事務局メンバーより返信させていただきます。どうぞよろしくお願いいたします。
 - Excel での提出が難しい場合は、メール本文にテキストで記述いただいても大丈夫です。
